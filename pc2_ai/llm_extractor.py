@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 
 log = logging.getLogger(__name__)
 
-OLLAMA_MODEL   = "llama3.2:3b"
+OLLAMA_MODEL   = "mistral:latest"
 OLLAMA_BASE    = "http://localhost:11434"
-OLLAMA_TIMEOUT = 30  # seconds — 3B model is fast locally
+OLLAMA_TIMEOUT = 60  # seconds — Mistral 7B is fast locally
 
 _SYSTEM_PROMPT = (
     "You are a cybersecurity analyst specializing in banking-sector threats. "

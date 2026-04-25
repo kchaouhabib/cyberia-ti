@@ -14,7 +14,7 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-OLLAMA_MODEL   = "llama3.2:3b"
+OLLAMA_MODEL   = "mistral:latest"
 OLLAMA_BASE    = "http://localhost:11434"
 OLLAMA_TIMEOUT = 45  # summarization needs slightly more time than extraction
 
