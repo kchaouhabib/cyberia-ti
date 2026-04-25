@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #050d1a;
+  color: #e8f4f8;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root { width: 100%; display: flex; }
+
+/* ── Glow animations ── */
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 10px rgba(255,45,85,0.4), 0 0 30px rgba(255,45,85,0.1); }
+  50%      { box-shadow: 0 0 25px rgba(255,45,85,0.8), 0 0 60px rgba(255,45,85,0.3); }
+}
+@keyframes cyan-pulse {
+  0%,100% { box-shadow: 0 0 8px rgba(0,212,255,0.3); }
+  50%      { box-shadow: 0 0 20px rgba(0,212,255,0.7); }
+}
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+@keyframes scan {
+  0%   { transform: translateY(-100%); opacity: 0.6; }
+  100% { transform: translateY(400px); opacity: 0; }
+}
+@keyframes float {
+  0%,100% { transform: translateY(0px); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes border-spin {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.glow-red  { animation: glow-pulse  2s ease-in-out infinite; }
+.glow-cyan { animation: cyan-pulse  2s ease-in-out infinite; }
+.blink     { animation: blink       1.2s ease-in-out infinite; }
+.float     { animation: float       3s ease-in-out infinite; }
+.count-up  { animation: count-up    0.4s ease-out forwards; }
+
+/* ── Gradient border card ── */
+.grad-border {
+  position: relative;
+  background: #0a1628;
+  border-radius: 12px;
+}
+.grad-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #00d4ff22, #1e3a5f, #ff2d5522);
+  z-index: -1;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0a1628; }
+::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+
+/* ── Grid bg ── */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Neon text ── */
+.neon-cyan { color: #00d4ff; text-shadow: 0 0 10px rgba(0,212,255,0.6); }
+.neon-red  { color: #ff2d55; text-shadow: 0 0 10px rgba(255,45,85,0.6); }
