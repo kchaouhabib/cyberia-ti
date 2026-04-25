@@ -3,16 +3,18 @@
 CYBERIA 2026 Hackathon · ESPRIT · 25-26 April 2026
 AI-Powered Threat Intelligence Platform.
 
-## ZeroTier IPs
+## NetBird mesh — team IPs
 
-Fill these in once everyone joins the same ZeroTier network:
+All 4 PCs joined via NetBird (replaces the earlier ZeroTier setup).
 
-| PC  | Owner | ZeroTier IP | Role |
-|-----|-------|-------------|------|
-| PC1 |       | TBD         | Data + API + DB |
-| PC2 |       | TBD         | AI engine (IOC extraction, classifier) |
-| PC3 |       | TBD         | Correlation + prediction |
-| PC4 |       | TBD         | Dashboard + deliverables |
+| PC  | NetBird IP        | Role |
+|-----|-------------------|------|
+| PC1 | `100.67.61.250`   | Data + API + DB · **API at `http://100.67.61.250:8000`** |
+| PC2 | `100.67.158.179`  | AI engine (IOC extraction, classifier) |
+| PC3 | `100.67.161.83`   | Correlation + prediction |
+| PC4 | `100.67.152.56`   | Dashboard + deliverables · Streamlit at `http://100.67.152.56:8501` |
+
+**API surface:** `http://100.67.61.250:8000` · Swagger UI: `/docs`
 
 ## Quick start
 
