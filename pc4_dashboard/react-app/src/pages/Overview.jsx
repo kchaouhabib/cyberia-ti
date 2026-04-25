@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { RadialBarChart, RadialBar, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from "recharts";
-import { Activity, Shield, AlertTriangle, TrendingUp, Database, Zap } from "lucide-react";
+import { RadialBarChart, RadialBar, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Activity, Shield, AlertTriangle, TrendingUp, Database, Zap, Grid3X3 } from "lucide-react";
 import Card, { CardTitle } from "../components/Card";
 
 const SEV_COLOR = { critical: "#ff2d55", high: "#ff9f0a", medium: "#ffd60a", low: "#30d158" };
@@ -98,6 +98,92 @@ function RecentAlerts({ incidents }) {
   );
 }
 
+const MITRE_TECHNIQUES = [
+  { id: "T1566", name: "Phishing" },
+  { id: "T1078", name: "Valid Accounts" },
+  { id: "T1190", name: "Exploit Public App" },
+  { id: "T1539", name: "Session Hijack" },
+  { id: "T1041", name: "Exfiltration" },
+  { id: "T1071", name: "C2 Protocol" },
+  { id: "T1486", name: "Ransomware" },
+];
+
+const HEATMAP_ASSETS = [
+  { key: "treasury",        label: "Treasury" },
+  { key: "payment_gateway", label: "Pay GW" },
+  { key: "customer_db",     label: "Cust DB" },
+  { key: "swift_terminal",  label: "SWIFT" },
+];
+
+function cellColor(val, max) {
+  if (val === 0) return null;
+  const r = val / max;
+  if (r < 0.34) return "#ff9f0a";
+  if (r < 0.67) return "#ff6020";
+  return "#ff2d55";
+}
+
+function MitreHeatmap({ incidents }) {
+  const matrix = Object.fromEntries(
+    MITRE_TECHNIQUES.map(t => [t.id, Object.fromEntries(HEATMAP_ASSETS.map(a => [a.key, 0]))])
+  );
+  incidents.forEach(inc => {
+    (inc.mitre_techniques || []).forEach(tech => {
+      if (matrix[tech]) (inc.targeted_assets || []).forEach(asset => {
+        if (matrix[tech][asset] !== undefined) matrix[tech][asset]++;
+      });
+    });
+  });
+  const maxVal = Math.max(...MITRE_TECHNIQUES.flatMap(t => HEATMAP_ASSETS.map(a => matrix[t.id][a.key])), 1);
+
+  return (
+    <div>
+      <div className="grid gap-1.5 mb-1" style={{ gridTemplateColumns: `130px repeat(4, 1fr)` }}>
+        <div />
+        {HEATMAP_ASSETS.map(a => (
+          <div key={a.key} className="text-center text-xs text-[#64748b] uppercase tracking-wider pb-1">{a.label}</div>
+        ))}
+      </div>
+      {MITRE_TECHNIQUES.map((t, ti) => (
+        <div key={t.id} className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: `130px repeat(4, 1fr)` }}>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="font-mono text-[#00d4ff] shrink-0">{t.id}</span>
+            <span className="text-[#64748b] truncate">{t.name}</span>
+          </div>
+          {HEATMAP_ASSETS.map((a, ai) => {
+            const val = matrix[t.id][a.key];
+            const c   = cellColor(val, maxVal);
+            return (
+              <motion.div key={a.key}
+                initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: (ti * 4 + ai) * 0.015 }}
+                title={`${t.id} × ${a.label}: ${val} incident${val !== 1 ? "s" : ""}`}
+                className="rounded-lg h-9 flex items-center justify-center font-black text-sm cursor-default"
+                style={{
+                  background: c ? c + "25" : "#0a1628",
+                  border:     `1px solid ${c ? c + "55" : "#1e3a5f"}`,
+                  color:      c || "#1e3a5f",
+                  boxShadow:  c && val > 0 ? `0 0 10px ${c}30` : "none",
+                }}>
+                {val > 0 ? val : "·"}
+              </motion.div>
+            );
+          })}
+        </div>
+      ))}
+      <div className="flex items-center gap-4 mt-3 text-xs text-[#64748b]">
+        <span>Frequency:</span>
+        {[["None","#1e3a5f"],["Low","#ff9f0a"],["Med","#ff6020"],["High","#ff2d55"]].map(([l,c]) => (
+          <span key={l} className="flex items-center gap-1.5">
+            <span className="w-3.5 h-3.5 rounded" style={{ background: c + "30", border: `1px solid ${c}60` }} />
+            {l}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Overview({ incidents, stats }) {
   const maxRisk = Math.max(...incidents.map(i => i.risk_score || 0), 0);
   const complianceHits = incidents.reduce((n, i) => n + (i.compliance_breaches?.length || 0), 0);
@@ -138,6 +224,12 @@ export default function Overview({ incidents, stats }) {
       <Card delay={0.2}>
         <CardTitle icon={AlertTriangle} title="Recent Alerts" badge={incidents.length} />
         <RecentAlerts incidents={incidents} />
+      </Card>
+
+      {/* MITRE ATT&CK Heatmap */}
+      <Card delay={0.25}>
+        <CardTitle icon={Grid3X3} title="MITRE ATT&CK Heatmap" badge="Financial Techniques × Bank Assets" />
+        <MitreHeatmap incidents={incidents} />
       </Card>
     </div>
   );

@@ -180,30 +180,46 @@ Every incident is automatically tagged with regulatory frameworks it would breac
 ## 7. Stage 05 — Dashboard & Action (PC4)
 
 ### 7.1 Technology Stack
-- **Streamlit 1.40+** — Python-native web app, no frontend skills required
-- **Plotly** — interactive gauge chart, animated bar charts
-- **Folium + streamlit-folium** — world map of attack origins
-- **Auto-refresh:** `@st.fragment(run_every=5)` — native 5-second refresh, no sleep loops
 
-### 7.2 Dashboard Panels
-
-| Panel | Data Source | Purpose |
+| Layer | Technology | Version |
 |---|---|---|
-| KPI Bar | `GET /stats` | Raw records, IOCs, incidents, compliance hits at a glance |
-| Risk Gauge | `GET /incidents` | Max risk score (0–100) across active incidents |
-| Compliance Panel | `GET /incidents` | Live breach counts per framework + notification deadlines |
-| World Map | `GET /incidents` → IOC geolocation | Attack origin visualization |
-| APT Panel | `GET /incidents` → IOC attribution | Active threat actor tracking |
-| Top Threats Bar | `GET /incidents` → IOC threat_type | Phishing / Malware / Lateral / Exfil / C2 |
-| Live Alerts | `GET /incidents` | Color-coded, sorted by severity, expandable |
-| Asset View | `GET /incidents` → targeted_assets | Treasury / Payment Gateway / Customer DB |
-| Predictions | `GET /predictions` | 7-day forecast table with trend indicators |
+| Framework | React + Vite | React 18, Vite 8 |
+| Animations | Framer Motion | AnimatePresence, motion.div, layoutId |
+| Charts | Recharts | RadialBarChart, BarChart, AreaChart |
+| Styling | Tailwind CSS v4 | @tailwindcss/vite plugin |
+| Icons | Lucide React | — |
+| Auto-refresh | useEffect + setInterval | 5-second polling loop |
 
-### 7.3 Design Decisions
-- **Crash-proof:** every API call wrapped in try/except — dashboard shows empty state if PC1 is down
-- **Dark theme:** custom CSS injected via `st.markdown` — professional SOC aesthetic
-- **Bank-specific:** asset view uses Banque Atlas assets, not generic sector labels
-- **SWIFT alert banner:** if SWIFT Terminal is targeted, a red error banner fires at the top of asset view
+### 7.2 Multi-Page Architecture
+
+The dashboard is a **5-page single-page application** with page-state navigation (no router):
+
+| Page | Key Visuals | Data Source |
+|---|---|---|
+| Overview | KPI bar, risk gauge, top threats bar, recent alerts, **MITRE heatmap** | `/incidents`, `/stats` |
+| Live Alerts | Severity filter bar, expandable alert rows, AI CISO summary, MITRE badges | `/incidents` |
+| Compliance | Framework breach counters (5 frameworks), breach table with deadlines, regulation reference | `/incidents` |
+| Asset Intelligence | Asset cards (Treasury/Pay GW/Customer DB/SWIFT), attack origins map, APT groups | `/incidents` |
+| Threat Predictions | Forecast cards (7d forecast + confidence), sector bar chart, rising threat area charts | `/predictions` |
+
+### 7.3 Signature Components
+
+**MITRE ATT&CK Heatmap** — 7 financial techniques × 4 bank assets matrix, color-coded by incident frequency (orange → red gradient). Biggest visual differentiator in the demo.
+
+**Risk Gauge** — RadialBarChart semicircle (0–100), color-coded green/orange/red. Animates on every data refresh.
+
+**AI CISO Summary** — Each alert row expands to show an AI-generated executive summary from PC2's Ollama LLM, badged as "✦ AI CISO SUMMARY" with a cyan accent.
+
+**Compliance Breach Table** — Each breach row shows: incident ID, regulation + article (e.g., "GDPR Art.33"), notification deadline (e.g., "72 hours → regulator"), urgency color.
+
+**SWIFT Emergency Banner** — Full-width pulsing red banner fires when `swift_terminal` is in targeted_assets. Includes "notify within 24h" instruction.
+
+### 7.4 Design Decisions
+
+- **Crash-proof:** every API call wrapped in try/catch with AbortSignal.timeout(4000) — dashboard shows empty state if PC1 is down, never breaks
+- **Dark SOC theme:** `#050d1a` background, `#0a1628` cards, `#1e3a5f` borders, `#00d4ff` accent — professional SOC aesthetic matching real-world platforms
+- **Animated page transitions:** `AnimatePresence mode="wait"` with slide-in (x:20→0) / slide-out (x:0→-20) between pages
+- **Live tick counter:** footer shows tick #N and total IOC count updating every 5s — visible proof of live data
 
 ---
 
@@ -250,4 +266,4 @@ During the pitch, PC1 triggers the staged Banque Atlas attack in real time:
 
 ---
 
-*Phase 2 draft — screenshots and final KPIs added in Phase 4.*
+*Phase 3 complete — KPI numbers to be measured and locked in Phase 4. Screenshots to be added post-demo.*
