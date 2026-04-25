@@ -37,7 +37,7 @@ from shared.schemas import EnrichedIOC  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PC1_URL = "http://192.168.1.5:8000"
+DEFAULT_PC1_URL = "http://100.67.61.250:8000"
 PC1_BASE_URL = os.environ.get("PC1_BASE_URL", DEFAULT_PC1_URL).rstrip("/")
 HTTP_TIMEOUT_S = 5.0
 FALLBACK_PATH = REPO_ROOT / "data" / "scenario" / "phase1_demo_incident.json"
