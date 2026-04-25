@@ -20,6 +20,7 @@ class RawThreatRecord(BaseModel):
     raw_text: str
     timestamp: datetime
     sector: Optional[str] = None  # 'banking' | 'telecom' | 'healthcare' | None
+    asset_type: Optional[str] = None  # 'treasury' | 'payment_gateway' | 'customer_db' | 'swift_terminal' | None
 
 
 class IOC(BaseModel):
@@ -39,6 +40,7 @@ class EnrichedIOC(IOC):
     related_cves: List[str] = []
     geolocation: Optional[str] = None
     reputation: Optional[float] = None
+    apt_attribution: Optional[str] = None  # 'fin7' | 'lazarus' | 'carbanak' | 'silence' | 'cobalt-group' | None
 
 
 class Incident(BaseModel):
@@ -48,9 +50,11 @@ class Incident(BaseModel):
     iocs: List[EnrichedIOC]
     mitre_techniques: List[str]  # ['T1566', 'T1078', ...]
     targeted_sectors: List[str]
+    targeted_assets: List[str] = []  # ['treasury', 'payment_gateway', 'customer_db', 'swift_terminal']
     risk_score: int  # 0-100
     severity: str  # 'critical' | 'high' | 'medium' | 'low'
     summary: str  # LLM-generated executive summary
+    compliance_breaches: List[str] = []  # ['PCI-DSS Req.3', 'PCI-DSS Req.10', 'SWIFT CSP CSCF 2.x', 'GDPR Art.33', 'Basel III ORR', 'BCT Circular']
     detected_at: datetime
 
 

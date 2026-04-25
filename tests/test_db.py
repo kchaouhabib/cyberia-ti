@@ -197,6 +197,53 @@ def test_prediction_upsert():
 # ──────────────────────────────────────────────────────────────────────────
 
 
+def test_banking_edition_fields_roundtrip():
+    """Banking-edition fields (asset_type, apt_attribution, targeted_assets,
+    compliance_breaches) survive Pydantic → SQLite → Pydantic roundtrip."""
+    raw = RawThreatRecord(
+        id="r-treasury-1",
+        source="scenario",
+        raw_text="phishing email targeting Banque Atlas treasury workstation",
+        timestamp=_now(),
+        sector="banking",
+        asset_type="treasury",
+    )
+    db.insert_raw(raw)
+    out_raw = db.list_raw()
+    assert out_raw[0].asset_type == "treasury"
+
+    enriched = EnrichedIOC(
+        value="example.test",
+        type="domain",
+        confidence=0.92,
+        source="otx",
+        first_seen=_now(),
+        threat_type="phishing",
+        apt_attribution="fin7",
+    )
+    db.upsert_enriched_ioc(enriched)
+    out_e = db.list_enriched_iocs()
+    assert out_e[0].apt_attribution == "fin7"
+
+    incident = Incident(
+        id="inc-banking-1",
+        iocs=[enriched],
+        mitre_techniques=["T1566", "T1078"],
+        targeted_sectors=["banking"],
+        targeted_assets=["treasury", "payment_gateway"],
+        risk_score=92,
+        severity="critical",
+        summary="FIN7 spearphishing on Banque Atlas treasury, lateral toward payment gateway.",
+        compliance_breaches=["PCI-DSS Req.10", "SWIFT CSP CSCF 2.x", "GDPR Art.33"],
+        detected_at=_now(),
+    )
+    db.insert_incident(incident)
+    out_inc = db.list_incidents()
+    assert out_inc[0].targeted_assets == ["treasury", "payment_gateway"]
+    assert "PCI-DSS Req.10" in out_inc[0].compliance_breaches
+    assert out_inc[0].iocs[0].apt_attribution == "fin7"
+
+
 def test_stats_grouping_by_sector():
     db.insert_raw(RawThreatRecord(
         id="r1", source="otx", raw_text="t", timestamp=_now(), sector="banking",
