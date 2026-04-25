@@ -12,7 +12,7 @@ import plotly.express as px
 from datetime import datetime
 
 # ── Config ────────────────────────────────────────────────────────────────────
-PC1_BASE_URL = "http://10.135.202.212:8000"
+PC1_BASE_URL = "http://100.67.61.250:8000"
 
 st.set_page_config(
     page_title="Banking Sector Threat Intelligence",
@@ -215,3 +215,4 @@ def dashboard():
 st.title("🏦 Banking Sector Threat Intelligence")
 st.caption("Cyberia 2026 — AI-Powered Threat Intelligence Platform | Banque Atlas Demo")
 dashboard()
+
