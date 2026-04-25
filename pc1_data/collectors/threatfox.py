@@ -80,7 +80,9 @@ def search_by_malware(family: str, limit: int = 30, timeout: float = 15.0) -> Li
         )
         return []
 
-    payload = {"query": "search_ioc", "malware": family, "limit": int(limit)}
+    # ThreatFox API renamed `malware` → `search_term` (the request body field
+    # name is now generic so the same query type can search for any IOC kind).
+    payload = {"query": "search_ioc", "search_term": family, "limit": int(limit)}
     try:
         resp = httpx.post(THREATFOX_URL, headers=headers, json=payload, timeout=timeout)
         resp.raise_for_status()
@@ -91,7 +93,13 @@ def search_by_malware(family: str, limit: int = 30, timeout: float = 15.0) -> Li
                 file=sys.stderr,
             )
             return []
-        return data.get("data", []) or []
+        # ThreatFox sometimes returns `data` as a STRING explanation on
+        # no_result status (e.g. "No matching IOC found"). Guard the type
+        # so iteration upstream gets dicts, not characters.
+        result = data.get("data", []) or []
+        if not isinstance(result, list):
+            return []
+        return result
     except httpx.HTTPError as e:
         print(f"[threatfox] WARN family={family} fetch failed: {e}", file=sys.stderr)
         return []

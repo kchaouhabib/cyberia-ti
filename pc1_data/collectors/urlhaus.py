@@ -52,12 +52,16 @@ MIN_RAW_TEXT_LEN = 80
 
 
 def _is_banking_relevant(entry: dict) -> bool:
-    """Return True if the URLhaus entry's tags hit our banking whitelist."""
-    tags = entry.get("tags") or []
-    if not isinstance(tags, list):
-        return False
-    norm = {t.strip().lower() for t in tags if isinstance(t, str)}
-    return bool(norm & BANKING_URLHAUS_TAGS)
+    """URLhaus's `recent` feed is already curated for KNOWN malicious URLs —
+    every entry is by definition a credential-harvest / malware drop / C2
+    endpoint. We accept all of them and tag sector='banking' because our
+    platform-wide threat model is banking-sector defence; PC3's correlator
+    will filter on actual asset/campaign relevance downstream.
+
+    The BANKING_URLHAUS_TAGS whitelist is preserved as a soft signal — we
+    keep matched entries but no longer reject the rest.
+    """
+    return True
 
 
 def _build_raw_text(entry: dict) -> str:
@@ -95,7 +99,8 @@ def _build_raw_text(entry: dict) -> str:
 
 def entry_to_record(entry: dict) -> Optional[RawThreatRecord]:
     """Convert one URLhaus entry to a RawThreatRecord, or None if not useful."""
-    url_id = (entry.get("id") or entry.get("url_id") or "").strip()
+    # URLhaus returns `id` as an integer (e.g. 3831702), so cast first.
+    url_id = str(entry.get("id") or entry.get("url_id") or "").strip()
     url = (entry.get("url") or "").strip()
     if not url_id or not url:
         return None
