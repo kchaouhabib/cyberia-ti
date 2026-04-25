@@ -16,7 +16,7 @@ Data Sources → AI Engine → Detection & Analysis → Prediction → Dashboard
 
 ## How the PCs Communicate
 - PC1 hosts FastAPI on port 8000 — single source of truth
-- PC2/PC3/PC4 call PC1's API over Tailscale: `http://<pc1-tailscale-ip>:8000`
+- PC2/PC3/PC4 call PC1's API over ZeroTier: `http://<pc1-zerotier-ip>:8000`
 - All data contracts are Pydantic models in `shared/schemas.py` — **never modify these without team approval**
 - Code synced via GitHub; pull before work, push after every working change
 

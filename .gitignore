@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual env
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Environments / secrets
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+
+# Databases / generated data
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+data/raw/*
+data/enriched/*
+data/scenario/*.db
+!data/raw/.gitkeep
+!data/enriched/.gitkeep
+!data/scenario/.gitkeep
+!data/mitre/.gitkeep
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Models / large artifacts
+*.pkl
+*.joblib
+results/*.png
