@@ -2,7 +2,7 @@
 PC2 pipeline — Stage 02, Phase 1.
 
 Polls PC1 GET /raw, runs regex IOC extraction, POSTs each IOC to PC1 POST /iocs.
-PC1 is at http://10.135.202.212:8000 (ZeroTier). Override with env var PC1_BASE_URL.
+PC1 is at http://100.67.61.250:8000 (NetBird). Override with env var PC1_BASE_URL.
 
 Run:
     python -m pc2_ai.pipeline
@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-PC1_BASE      = os.environ.get("PC1_BASE_URL", "http://10.135.202.212:8000")
+PC1_BASE      = os.environ.get("PC1_BASE_URL", "http://100.67.61.250:8000")
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SECONDS", "10"))
 
 # Track which record IDs we have already processed so we don't push duplicates
