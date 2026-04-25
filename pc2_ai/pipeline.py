@@ -23,6 +23,7 @@ from pc2_ai.deduplicator import deduplicate
 from pc2_ai.classifier import classify
 from pc2_ai.confidence_scorer import apply as score_confidence
 from pc2_ai.ner import get_apt_attribution
+from pc2_ai.enrichment_caller import enrich
 from shared.schemas import EnrichedIOC, RawThreatRecord
 
 logging.basicConfig(
@@ -89,6 +90,9 @@ def process_record(record: RawThreatRecord) -> int:
         # Step 4 — confidence scoring
         scored_ioc = score_confidence(ioc)
 
+        # Step 6 — VT + Shodan enrichment via PC1 /enrich
+        reputation, geolocation = enrich(ioc.value, ioc.type, PC1_BASE)
+
         # Build EnrichedIOC
         enriched = EnrichedIOC(
             value=scored_ioc.value,
@@ -98,8 +102,8 @@ def process_record(record: RawThreatRecord) -> int:
             first_seen=scored_ioc.first_seen,
             threat_type=threat_type,
             related_cves=[],
-            geolocation=None,
-            reputation=None,
+            geolocation=geolocation,
+            reputation=reputation,
             apt_attribution=apt_attr,
         )
 
@@ -143,7 +147,7 @@ def run_once() -> None:
 def run_loop() -> None:
     """Poll PC1 every POLL_INTERVAL seconds indefinitely."""
     log.info(f"PC2 pipeline (Phase 2) starting — target: {PC1_BASE}  poll: {POLL_INTERVAL}s")
-    log.info("Chain: extract → dedup → classify → score → NER → push /iocs/enriched")
+    log.info("Chain: extract -> dedup -> classify -> score -> NER -> VT/Shodan -> push /iocs/enriched")
     while True:
         try:
             run_once()
