@@ -33,7 +33,7 @@ from dotenv import load_dotenv
 from shared.schemas import RawThreatRecord
 
 OTX_BASE_URL = "https://otx.alienvault.com/api/v1"
-OTX_PULSES_SEARCH = f"{OTX_BASE_URL}/pulses/search"
+OTX_PULSES_SEARCH = f"{OTX_BASE_URL}/search/pulses"  # NOT /pulses/search — that's a 404
 
 # Search queries that bias the firehose toward banking-sector intel.
 # Mix of generic finance keywords + known financial APT / malware names.
@@ -153,12 +153,18 @@ def pulse_to_record(pulse: dict) -> Optional[RawThreatRecord]:
     except (ValueError, AttributeError):
         timestamp = datetime.now(timezone.utc)
 
-    sector = "banking" if _is_banking_pulse(pulse) else None
+    # Every query in BANKING_QUERIES is banking-targeted by design, so any
+    # pulse this collector returns is banking-relevant by construction.
+    # The tag check is kept as a sanity boost (high-confidence banking),
+    # but a tag miss is no longer a disqualifier — older pulses often
+    # have empty tags arrays even when their content is clearly banking.
+    sector = "banking"
+    confidence_tag = "banking-strong" if _is_banking_pulse(pulse) else "banking-loose"
 
     return RawThreatRecord(
         id=f"otx:{pulse_id}",
         source="otx",
-        raw_text=raw_text,
+        raw_text=raw_text + f"\n\n[sector_confidence={confidence_tag}]",
         timestamp=timestamp,
         sector=sector,
     )
