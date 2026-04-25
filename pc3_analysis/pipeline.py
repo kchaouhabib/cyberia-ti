@@ -33,12 +33,15 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from pc3_analysis import (  # noqa: E402
     anomaly_detector,
+    behavior_analyzer,
     compliance_mapper,
     correlator,
+    cve_prioritizer,
     mitre_mapper,
+    predictor,
     risk_scorer,
 )
-from shared.schemas import EnrichedIOC, Incident  # noqa: E402
+from shared.schemas import EnrichedIOC, Incident, Prediction  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,22 @@ def _push_incident(client: httpx.Client, incident: Incident) -> None:
     response = client.post(
         f"{PC1_BASE_URL}/incidents",
         content=incident.model_dump_json(),
+        headers={"Content-Type": "application/json"},
+        timeout=HTTP_TIMEOUT_S,
+    )
+    response.raise_for_status()
+
+
+def _push_prediction(client: httpx.Client, prediction: Prediction) -> None:
+    """POST a Prediction (volume forecast / cve:* / apt:*).
+
+    PC1 UPSERTs on (sector, threat_type) so re-posting overwrites the previous
+    forecast row - exactly the behaviour we want, since each cycle re-derives
+    the prediction from the current IOC/incident state.
+    """
+    response = client.post(
+        f"{PC1_BASE_URL}/predictions",
+        content=prediction.model_dump_json(),
         headers={"Content-Type": "application/json"},
         timeout=HTTP_TIMEOUT_S,
     )
@@ -150,8 +169,10 @@ def run_once() -> int:
             return 0
 
         pushed = 0
+        enriched_incidents: list[Incident] = []
         for incident in incidents:
             tagged = _enrich_incident(incident)
+            enriched_incidents.append(tagged)
             try:
                 _push_incident(client, tagged)
                 pushed += 1
@@ -183,6 +204,45 @@ def run_once() -> int:
                 a.count,
                 a.score,
             )
+
+        # Phase 3: forecast volume, rank CVEs, match APT signatures. All three
+        # producers emit Prediction rows; we POST them via the same UPSERT
+        # endpoint. Failures on individual rows are logged but don't abort the
+        # cycle - a flaky CVE row should not lose us our Prophet forecast.
+        predictions: list[Prediction] = []
+        try:
+            predictions.extend(predictor.forecast(iocs))
+        except Exception:
+            logger.exception("Predictor failed; skipping volume forecasts this cycle")
+        try:
+            predictions.extend(cve_prioritizer.prioritize(iocs))
+        except Exception:
+            logger.exception("CVE prioritizer failed; skipping CVE rankings this cycle")
+        try:
+            # behavior_analyzer keys off mitre_techniques and targeted_assets,
+            # so we feed it the enriched incidents we already computed above.
+            predictions.extend(behavior_analyzer.analyze(enriched_incidents))
+        except Exception:
+            logger.exception("Behavior analyzer failed; skipping APT matches this cycle")
+
+        for prediction in predictions:
+            try:
+                _push_prediction(client, prediction)
+                logger.info(
+                    "Pushed prediction  sector=%s  type=%s  forecast_7d=%.2f  trend=%s  conf=%.2f",
+                    prediction.sector,
+                    prediction.threat_type,
+                    prediction.forecast_7d,
+                    prediction.trend,
+                    prediction.confidence,
+                )
+            except httpx.HTTPError as exc:
+                logger.error(
+                    "Failed to push prediction %s/%s: %s",
+                    prediction.sector,
+                    prediction.threat_type,
+                    exc,
+                )
 
         return pushed
 
