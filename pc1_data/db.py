@@ -294,7 +294,11 @@ def list_predictions() -> List[Prediction]:
 
 def get_stats() -> dict:
     """Aggregate counts for the dashboard header. Polled every 5s by PC4 —
-    keep it cheap: one round-trip, indexed-column queries only."""
+    keep it cheap: one round-trip, indexed-column queries only.
+
+    Includes `compliance_breach_count` for PC4's compliance panel header
+    (counts incidents whose data_json carries a non-empty
+    compliance_breaches array)."""
     with get_conn() as conn:
         raw_count = conn.execute("SELECT COUNT(*) FROM raw_records").fetchone()[0]
         ioc_count = conn.execute("SELECT COUNT(*) FROM iocs").fetchone()[0]
@@ -304,6 +308,19 @@ def get_stats() -> dict:
         incident_count = conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
         prediction_count = conn.execute(
             "SELECT COUNT(*) FROM predictions"
+        ).fetchone()[0]
+
+        # Banking-edition compliance counter: incidents with at least one
+        # regulation breach tagged. We use LIKE on the JSON blob — cheap and
+        # avoids a JSON1 dependency. Brittle if the field is renamed; the
+        # schema in shared/schemas.py is locked, so this is fine.
+        compliance_breach_count = conn.execute(
+            """
+            SELECT COUNT(*) FROM incidents
+            WHERE data_json LIKE '%"compliance_breaches"%'
+              AND data_json NOT LIKE '%"compliance_breaches":[]%'
+              AND data_json NOT LIKE '%"compliance_breaches": []%'
+            """
         ).fetchone()[0]
 
         sector_rows = conn.execute(
@@ -326,5 +343,6 @@ def get_stats() -> dict:
         "enriched_count": enriched_count,
         "incident_count": incident_count,
         "prediction_count": prediction_count,
+        "compliance_breach_count": compliance_breach_count,
         "by_sector": by_sector,
     }

@@ -10,8 +10,11 @@ shared/schemas.py as the only contract that matters.
 from typing import Dict, List
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from pc1_data import db
+from pc1_data.enrichment import shodan as shodan_enrich
+from pc1_data.enrichment import virustotal as vt_enrich
 from shared.schemas import (
     EnrichedIOC,
     IOC,
@@ -19,6 +22,13 @@ from shared.schemas import (
     Prediction,
     RawThreatRecord,
 )
+
+
+class EnrichRequest(BaseModel):
+    """Body for POST /enrich. type uses the same vocabulary as IOC.type."""
+
+    value: str
+    type: str
 
 app = FastAPI(
     title="CYBERIA Threat Intelligence API",
@@ -95,6 +105,25 @@ def push_enriched_ioc(ioc: EnrichedIOC) -> Dict[str, str]:
 def list_enriched_iocs(limit: int = 1000) -> List[EnrichedIOC]:
     """List enriched IOCs only. PC3 polls this for correlation."""
     return db.list_enriched_iocs(limit=limit)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# ENRICHMENT (PC2 calls /enrich during the enrichment phase)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@app.post("/enrich")
+def enrich_ioc(req: EnrichRequest) -> Dict[str, object]:
+    """Look up an IOC against VirusTotal + Shodan and return summarised
+    enrichment. Both backends gracefully degrade if their key is missing —
+    callers always get a typed dict, never a 500.
+    """
+    return {
+        "value": req.value,
+        "type": req.type,
+        "vt": vt_enrich.lookup(req.value, req.type),
+        "shodan": shodan_enrich.lookup(req.value, req.type),
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────
