@@ -1,9 +1,11 @@
 """
-PC2 pipeline — Stage 02, Phase 2.
+PC2 pipeline — Stage 02, Phase 3.
 
 Full chain:
-  PC1 GET /raw  →  regex extract  →  deduplicate  →  classify
-  →  confidence score  →  NER apt_attribution  →  PC1 POST /iocs/enriched
+  PC1 GET /raw
+  → regex extract + LLM extract (merged, deduped)
+  → classify → confidence score → NER → VT/Shodan enrich
+  → PC1 POST /iocs/enriched
 
 PC1 is at http://100.67.61.250:8000 (NetBird). Override with env var PC1_BASE_URL.
 
@@ -19,6 +21,7 @@ from datetime import datetime, timezone
 import httpx
 
 from pc2_ai.ioc_extractor import extract_iocs
+from pc2_ai.llm_extractor import extract_iocs_llm, side_by_side
 from pc2_ai.deduplicator import deduplicate
 from pc2_ai.classifier import classify
 from pc2_ai.confidence_scorer import apply as score_confidence
@@ -69,12 +72,20 @@ def process_record(record: RawThreatRecord) -> int:
       5. NER APT attribution from raw text
       6. Build EnrichedIOC and push to PC1
     """
-    # Step 1 — extract
-    raw_iocs = extract_iocs(record.raw_text, source=record.source)
+    # Step 1 — regex extract
+    regex_iocs = extract_iocs(record.raw_text, source=record.source)
+
+    # Step 1b — LLM extract (Ollama, gracefully skipped if not running)
+    llm_iocs = extract_iocs_llm(record.raw_text, source=record.source)
+    if llm_iocs:
+        log.debug(f"  LLM found {len(llm_iocs)} IOCs vs regex {len(regex_iocs)}")
+
+    # Merge regex + LLM results before dedup
+    raw_iocs = regex_iocs + llm_iocs
     if not raw_iocs:
         return 0
 
-    # Step 2 — deduplicate within this record
+    # Step 2 — deduplicate merged results
     deduped, n_removed = deduplicate(raw_iocs)
     if n_removed:
         log.debug(f"  dedup: removed {n_removed} near-duplicate(s)")
