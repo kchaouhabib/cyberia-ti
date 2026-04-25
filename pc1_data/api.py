@@ -1,14 +1,17 @@
 """
 PC1 FastAPI service — single source of truth for the team.
 
-Phase 1 stub: every endpoint exists and validates input via Pydantic,
-but returns mock empty data. Phase 2 wires real SQLite persistence.
+All endpoints validate input via Pydantic at the network boundary and
+persist to SQLite via pc1_data/db.py. PC2/3/4 only see this surface —
+they never touch the DB directly. This keeps the locked schema in
+shared/schemas.py as the only contract that matters.
 """
 
 from typing import Dict, List
 
 from fastapi import FastAPI
 
+from pc1_data import db
 from shared.schemas import (
     EnrichedIOC,
     IOC,
@@ -19,111 +22,123 @@ from shared.schemas import (
 
 app = FastAPI(
     title="CYBERIA Threat Intelligence API",
-    version="0.1.0",
+    version="0.2.0",
     description="PC1 backbone — single source of truth for raw records, IOCs, incidents, predictions.",
 )
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    """Create SQLite tables on first launch. Idempotent."""
+    db.init_db()
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # HEALTH
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.get("/")
 def root() -> Dict[str, str]:
-    """Liveness probe."""
-    return {"status": "ok", "service": "cyberia-ti", "version": "0.1.0"}
+    """Liveness probe — used by teammates to verify ZeroTier reachability."""
+    return {"status": "ok", "service": "cyberia-ti", "version": "0.2.0"}
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # RAW RECORDS (collectors → /raw, PC2 reads /raw)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.post("/raw")
 def push_raw(record: RawThreatRecord) -> Dict[str, str]:
     """Accept a raw threat record from a collector or the scenario injector."""
-    # TODO Phase 1: persist to SQLite raw_records table
+    db.insert_raw(record)
     return {"ok": "true", "id": record.id}
 
 
 @app.get("/raw", response_model=List[RawThreatRecord])
-def list_raw() -> List[RawThreatRecord]:
-    """List all raw records. PC2 polls this to find work."""
-    # TODO Phase 1: SELECT * FROM raw_records
-    return []
+def list_raw(limit: int = 100) -> List[RawThreatRecord]:
+    """List raw records, newest first. PC2 polls this for work."""
+    return db.list_raw(limit=limit)
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # IOCs (PC2 → /iocs and /iocs/enriched, PC3 reads /iocs/enriched)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.post("/iocs")
 def push_ioc(ioc: IOC) -> Dict[str, str]:
-    """Accept an extracted IOC (pre-enrichment)."""
+    """Accept an extracted IOC (pre-enrichment).
+
+    INSERT-OR-IGNORE on (value, type, source) so a re-extraction never wipes
+    enrichment that has already landed.
+    """
+    db.insert_ioc(ioc)
     return {"ok": "true", "value": ioc.value}
 
 
 @app.get("/iocs", response_model=List[IOC])
-def list_iocs() -> List[IOC]:
-    """List all IOCs."""
-    return []
+def list_iocs(limit: int = 1000) -> List[IOC]:
+    """List all IOCs (raw + enriched), as base IOC."""
+    return db.list_iocs(limit=limit)
 
 
 @app.post("/iocs/enriched")
 def push_enriched_ioc(ioc: EnrichedIOC) -> Dict[str, str]:
-    """Accept an enriched IOC (post-VT/Shodan/classifier)."""
+    """Accept an enriched IOC. UPSERTs over the existing IOC row."""
+    db.upsert_enriched_ioc(ioc)
     return {"ok": "true", "value": ioc.value}
 
 
 @app.get("/iocs/enriched", response_model=List[EnrichedIOC])
-def list_enriched_iocs() -> List[EnrichedIOC]:
-    """List enriched IOCs. PC3 polls this for correlation."""
-    return []
+def list_enriched_iocs(limit: int = 1000) -> List[EnrichedIOC]:
+    """List enriched IOCs only. PC3 polls this for correlation."""
+    return db.list_enriched_iocs(limit=limit)
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # INCIDENTS (PC3 → /incidents, PC4 reads /incidents)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.post("/incidents")
 def push_incident(incident: Incident) -> Dict[str, str]:
-    """Accept a correlated incident."""
+    """Accept a correlated incident. Latest correlation wins (UPSERT on id)."""
+    db.insert_incident(incident)
     return {"ok": "true", "id": incident.id}
 
 
 @app.get("/incidents", response_model=List[Incident])
-def list_incidents() -> List[Incident]:
-    """List all incidents. PC4 dashboard polls this."""
-    return []
+def list_incidents(limit: int = 200) -> List[Incident]:
+    """List all incidents, newest first. PC4 dashboard polls this every 5s."""
+    return db.list_incidents(limit=limit)
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # PREDICTIONS (PC3 → /predictions, PC4 reads /predictions)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.post("/predictions")
 def push_prediction(prediction: Prediction) -> Dict[str, str]:
-    """Accept a 7-day forecast for a (sector, threat_type) pair."""
+    """Accept a 7-day forecast. UPSERT — one row per (sector, threat_type)."""
+    db.upsert_prediction(prediction)
     return {"ok": "true", "sector": prediction.sector}
 
 
 @app.get("/predictions", response_model=List[Prediction])
 def list_predictions() -> List[Prediction]:
-    """List predictions. PC4 dashboard polls this."""
-    return []
+    """List current predictions. PC4 dashboard polls this every 5s."""
+    return db.list_predictions()
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # DASHBOARD STATS (PC4 reads /stats)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 @app.get("/stats")
 def stats() -> Dict[str, object]:
-    """Aggregate counts for the dashboard header."""
-    return {
-        "raw_count": 0,
-        "ioc_count": 0,
-        "enriched_count": 0,
-        "incident_count": 0,
-        "prediction_count": 0,
-        "by_sector": {"banking": 0, "telecom": 0, "healthcare": 0},
-    }
+    """Aggregate counts for the dashboard header. Polled every 5s by PC4."""
+    return db.get_stats()
