@@ -9,8 +9,15 @@ shared/schemas.py as the only contract that matters.
 
 from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
+
+# Load .env into os.environ at import time so uvicorn-spawned routes (e.g.
+# /enrich → VirusTotal/Shodan wrappers) can read the API keys via os.getenv.
+# Collectors already do this in their own main(); the FastAPI app needs its
+# own call because it has no main().
+load_dotenv()
 
 from pc1_data import db
 from pc1_data.enrichment import shodan as shodan_enrich
