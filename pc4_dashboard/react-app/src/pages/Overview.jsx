@@ -108,11 +108,12 @@ const MITRE_TECHNIQUES = [
   { id: "T1486", name: "Ransomware" },
 ];
 
-const HEATMAP_ASSETS = [
-  { key: "treasury",        label: "Treasury" },
-  { key: "payment_gateway", label: "Pay GW" },
-  { key: "customer_db",     label: "Cust DB" },
-  { key: "swift_terminal",  label: "SWIFT" },
+const HEATMAP_VECTORS = [
+  { key: "phishing",         label: "Phishing" },
+  { key: "exfiltration",     label: "Exfiltration" },
+  { key: "lateral_movement", label: "Lateral Mov." },
+  { key: "malware",          label: "Malware" },
+  { key: "c2",               label: "C2" },
 ];
 
 function cellColor(val, max) {
@@ -125,39 +126,40 @@ function cellColor(val, max) {
 
 function MitreHeatmap({ incidents }) {
   const matrix = Object.fromEntries(
-    MITRE_TECHNIQUES.map(t => [t.id, Object.fromEntries(HEATMAP_ASSETS.map(a => [a.key, 0]))])
+    MITRE_TECHNIQUES.map(t => [t.id, Object.fromEntries(HEATMAP_VECTORS.map(v => [v.key, 0]))])
   );
   incidents.forEach(inc => {
+    const iocTypes = new Set((inc.iocs || []).map(i => i.threat_type).filter(Boolean));
     (inc.mitre_techniques || []).forEach(tech => {
-      if (matrix[tech]) (inc.targeted_assets || []).forEach(asset => {
-        if (matrix[tech][asset] !== undefined) matrix[tech][asset]++;
+      if (matrix[tech]) iocTypes.forEach(tt => {
+        if (matrix[tech][tt] !== undefined) matrix[tech][tt]++;
       });
     });
   });
-  const maxVal = Math.max(...MITRE_TECHNIQUES.flatMap(t => HEATMAP_ASSETS.map(a => matrix[t.id][a.key])), 1);
+  const maxVal = Math.max(...MITRE_TECHNIQUES.flatMap(t => HEATMAP_VECTORS.map(v => matrix[t.id][v.key])), 1);
 
   return (
     <div>
-      <div className="grid gap-1.5 mb-1" style={{ gridTemplateColumns: `130px repeat(4, 1fr)` }}>
+      <div className="grid gap-1.5 mb-1" style={{ gridTemplateColumns: `130px repeat(5, 1fr)` }}>
         <div />
-        {HEATMAP_ASSETS.map(a => (
-          <div key={a.key} className="text-center text-xs text-[#64748b] uppercase tracking-wider pb-1">{a.label}</div>
+        {HEATMAP_VECTORS.map(v => (
+          <div key={v.key} className="text-center text-xs text-[#64748b] uppercase tracking-wider pb-1">{v.label}</div>
         ))}
       </div>
       {MITRE_TECHNIQUES.map((t, ti) => (
-        <div key={t.id} className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: `130px repeat(4, 1fr)` }}>
+        <div key={t.id} className="grid gap-1.5 mb-1.5" style={{ gridTemplateColumns: `130px repeat(5, 1fr)` }}>
           <div className="flex items-center gap-1.5 text-xs">
             <span className="font-mono text-[#00d4ff] shrink-0">{t.id}</span>
             <span className="text-[#64748b] truncate">{t.name}</span>
           </div>
-          {HEATMAP_ASSETS.map((a, ai) => {
-            const val = matrix[t.id][a.key];
+          {HEATMAP_VECTORS.map((v, vi) => {
+            const val = matrix[t.id][v.key];
             const c   = cellColor(val, maxVal);
             return (
-              <motion.div key={a.key}
+              <motion.div key={v.key}
                 initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: (ti * 4 + ai) * 0.015 }}
-                title={`${t.id} × ${a.label}: ${val} incident${val !== 1 ? "s" : ""}`}
+                transition={{ delay: (ti * 5 + vi) * 0.012 }}
+                title={`${t.id} × ${v.label}: ${val} incident${val !== 1 ? "s" : ""}`}
                 className="rounded-lg h-9 flex items-center justify-center font-black text-sm cursor-default"
                 style={{
                   background: c ? c + "25" : "#0a1628",

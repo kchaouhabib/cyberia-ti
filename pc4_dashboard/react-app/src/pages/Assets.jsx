@@ -12,10 +12,14 @@ const ASSET_META = {
 };
 
 const GEO_MAP = {
-  "Russia": "🇷🇺", "China": "🇨🇳", "North Korea": "🇰🇵", "Iran": "🇮🇷",
-  "Romania": "🇷🇴", "Ukraine": "🇺🇦", "United States": "🇺🇸", "Germany": "🇩🇪",
-  "Netherlands": "🇳🇱", "Brazil": "🇧🇷", "India": "🇮🇳", "Turkey": "🇹🇷",
-  "Nigeria": "🇳🇬", "France": "🇫🇷", "United Kingdom": "🇬🇧", "Tunisia": "🇹🇳",
+  "Russia": "🇷🇺", "RU": "🇷🇺", "China": "🇨🇳", "CN": "🇨🇳",
+  "North Korea": "🇰🇵", "KP": "🇰🇵", "Iran": "🇮🇷", "IR": "🇮🇷",
+  "Romania": "🇷🇴", "RO": "🇷🇴", "Ukraine": "🇺🇦", "UA": "🇺🇦",
+  "United States": "🇺🇸", "US": "🇺🇸", "Germany": "🇩🇪", "DE": "🇩🇪",
+  "Netherlands": "🇳🇱", "NL": "🇳🇱", "Brazil": "🇧🇷", "BR": "🇧🇷",
+  "India": "🇮🇳", "IN": "🇮🇳", "Turkey": "🇹🇷", "TR": "🇹🇷",
+  "Nigeria": "🇳🇬", "NG": "🇳🇬", "France": "🇫🇷", "FR": "🇫🇷",
+  "United Kingdom": "🇬🇧", "GB": "🇬🇧", "Tunisia": "🇹🇳", "TN": "🇹🇳",
 };
 
 function AssetCard({ assetKey, incidents, delay }) {
@@ -80,9 +84,23 @@ function AssetCard({ assetKey, incidents, delay }) {
   );
 }
 
+function inferAssets(inc) {
+  if (inc.targeted_assets?.length) return inc.targeted_assets;
+  const types  = new Set((inc.iocs || []).map(i => i.threat_type).filter(Boolean));
+  const techs  = new Set(inc.mitre_techniques || []);
+  const assets = new Set();
+  if (types.has("phishing")         || techs.has("T1566") || techs.has("T1539")) assets.add("customer_db");
+  if (types.has("exfiltration")     || techs.has("T1041"))                        assets.add("treasury");
+  if (types.has("lateral_movement") || techs.has("T1078"))                        assets.add("payment_gateway");
+  if (types.has("malware"))                                                        assets.add("customer_db");
+  if (techs.has("T1486")            || techs.has("T1071"))                        assets.add("swift_terminal");
+  if (!assets.size)                                                                assets.add("customer_db");
+  return [...assets];
+}
+
 export default function Assets({ incidents }) {
   const buckets = { treasury: [], payment_gateway: [], customer_db: [], swift_terminal: [] };
-  incidents.forEach(inc => inc.targeted_assets?.forEach(a => { if (buckets[a]) buckets[a].push(inc); }));
+  incidents.forEach(inc => inferAssets(inc).forEach(a => { if (buckets[a]) buckets[a].push(inc); }));
 
   // Attack origins from IOC geolocation
   const geoHits = {};
