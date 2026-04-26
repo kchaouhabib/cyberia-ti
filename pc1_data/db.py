@@ -22,7 +22,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, List
+from typing import Iterator, List, Optional
 
 from shared.schemas import (
     EnrichedIOC,
@@ -259,6 +259,22 @@ def list_incidents(limit: int = 200) -> List[Incident]:
             (limit,),
         ).fetchall()
     return [Incident.model_validate_json(r["data_json"]) for r in rows]
+
+
+def get_incident_by_id(id_: str) -> Optional[Incident]:
+    """Fetch one incident by id. Returns None if not found.
+
+    Used by /incidents/{id}, /incidents/{id}/timeline, and the single-incident
+    PDF/CSV/JSON export paths.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT data_json FROM incidents WHERE id = ?",
+            (id_,),
+        ).fetchone()
+    if row is None:
+        return None
+    return Incident.model_validate_json(row["data_json"])
 
 
 # ──────────────────────────────────────────────────────────────────────────

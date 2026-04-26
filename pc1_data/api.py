@@ -7,14 +7,15 @@ they never touch the DB directly. This keeps the locked schema in
 shared/schemas.py as the only contract that matters.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
 from pc1_data import db
 from pc1_data.enrichment import shodan as shodan_enrich
 from pc1_data.enrichment import virustotal as vt_enrich
+from pc1_data.exporters import csv_export, json_export, pdf_export
 from shared.schemas import (
     EnrichedIOC,
     IOC,
@@ -144,6 +145,48 @@ def list_incidents(limit: int = 200) -> List[Incident]:
     return db.list_incidents(limit=limit)
 
 
+@app.get("/incidents/{incident_id}", response_model=Incident)
+def get_incident(incident_id: str) -> Incident:
+    """Fetch one incident by id. 404 if missing."""
+    inc = db.get_incident_by_id(incident_id)
+    if inc is None:
+        raise HTTPException(status_code=404, detail=f"incident {incident_id!r} not found")
+    return inc
+
+
+@app.get("/incidents/{incident_id}/timeline")
+def incident_timeline(incident_id: str) -> Dict[str, object]:
+    """Ordered IOC events for one incident — feeds PC4's attack-timeline panel.
+
+    Events are sorted by `first_seen` ascending so the front-end can render a
+    top-to-bottom kill-chain (phishing → lateral → exfil → c2 / SWIFT anomaly).
+    """
+    inc = db.get_incident_by_id(incident_id)
+    if inc is None:
+        raise HTTPException(status_code=404, detail=f"incident {incident_id!r} not found")
+    events = sorted(inc.iocs, key=lambda i: i.first_seen)
+    return {
+        "incident_id": inc.id,
+        "severity": inc.severity,
+        "risk_score": inc.risk_score,
+        "detected_at": inc.detected_at.isoformat(),
+        "summary": inc.summary,
+        "events": [
+            {
+                "first_seen": ioc.first_seen.isoformat(),
+                "ioc_value": ioc.value,
+                "ioc_type": ioc.type,
+                "threat_type": ioc.threat_type,
+                "apt_attribution": ioc.apt_attribution,
+                "confidence": ioc.confidence,
+                "geolocation": ioc.geolocation,
+                "source": ioc.source,
+            }
+            for ioc in events
+        ],
+    }
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # PREDICTIONS (PC3 → /predictions, PC4 reads /predictions)
 # ──────────────────────────────────────────────────────────────────────────
@@ -171,3 +214,63 @@ def list_predictions() -> List[Prediction]:
 def stats() -> Dict[str, object]:
     """Aggregate counts for the dashboard header. Polled every 5s by PC4."""
     return db.get_stats()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# EXPORTS (demo + CISO deliverables) — JSON / CSV / PDF
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _resolve_export_set(incident_id: Optional[str]) -> List[Incident]:
+    """Resolve the incident list for an export. 404 if a specific id is missing."""
+    if incident_id:
+        inc = db.get_incident_by_id(incident_id)
+        if inc is None:
+            raise HTTPException(
+                status_code=404, detail=f"incident {incident_id!r} not found"
+            )
+        return [inc]
+    return db.list_incidents(limit=1000)
+
+
+def _attachment_headers(filename: str) -> Dict[str, str]:
+    return {"Content-Disposition": f'attachment; filename="{filename}"'}
+
+
+@app.get("/export/json")
+def export_json(id: Optional[str] = None) -> Response:
+    """Download incidents as a JSON document. `?id=` exports one incident."""
+    incidents = _resolve_export_set(id)
+    payload = json_export.render(incidents)
+    fname = f"incident_{id}.json" if id else "incidents.json"
+    return Response(
+        content=payload,
+        media_type="application/json",
+        headers=_attachment_headers(fname),
+    )
+
+
+@app.get("/export/csv")
+def export_csv(id: Optional[str] = None) -> Response:
+    """Download incidents as a flattened CSV. `?id=` exports one incident."""
+    incidents = _resolve_export_set(id)
+    payload = csv_export.render(incidents)
+    fname = f"incident_{id}.csv" if id else "incidents.csv"
+    return Response(
+        content=payload,
+        media_type="text/csv; charset=utf-8",
+        headers=_attachment_headers(fname),
+    )
+
+
+@app.get("/export/pdf")
+def export_pdf(id: Optional[str] = None) -> Response:
+    """Download a SOC-style PDF report. `?id=` exports one incident with appendix."""
+    incidents = _resolve_export_set(id)
+    payload = pdf_export.render(incidents)
+    fname = f"incident_{id}.pdf" if id else "incidents.pdf"
+    return Response(
+        content=payload,
+        media_type="application/pdf",
+        headers=_attachment_headers(fname),
+    )
