@@ -44,26 +44,26 @@ APT_LABELS = {
     "cobalt-group": ("Cobalt Group","#ca6702"),
 }
 
-# Geolocation → (lat, lon) for world map
+# Geolocation → (lat, lon) — supports both full names and ISO-2 codes from PC1
 GEO_COORDS = {
-    "Russia":         (55.75,  37.62),
-    "China":          (39.91, 116.39),
-    "North Korea":    (39.03, 125.75),
-    "Iran":           (35.69,  51.39),
-    "Romania":        (44.43,  26.10),
-    "Ukraine":        (50.45,  30.52),
-    "United States":  (38.89, -77.03),
-    "Germany":        (52.52,  13.40),
-    "Netherlands":    (52.37,   4.90),
-    "Brazil":         (-15.78,-47.93),
-    "India":          (28.61,  77.21),
-    "Turkey":         (39.93,  32.86),
-    "Nigeria":        (9.07,    7.40),
-    "Indonesia":      (-6.21, 106.85),
-    "France":         (48.86,   2.35),
-    "United Kingdom": (51.51,  -0.13),
-    "Tunisia":        (36.82,  10.18),
-    "Morocco":        (33.99,  -6.85),
+    "Russia":         (55.75,  37.62),  "RU": (55.75,  37.62),
+    "China":          (39.91, 116.39),  "CN": (39.91, 116.39),
+    "North Korea":    (39.03, 125.75),  "KP": (39.03, 125.75),
+    "Iran":           (35.69,  51.39),  "IR": (35.69,  51.39),
+    "Romania":        (44.43,  26.10),  "RO": (44.43,  26.10),
+    "Ukraine":        (50.45,  30.52),  "UA": (50.45,  30.52),
+    "United States":  (38.89, -77.03),  "US": (38.89, -77.03),
+    "Germany":        (52.52,  13.40),  "DE": (52.52,  13.40),
+    "Netherlands":    (52.37,   4.90),  "NL": (52.37,   4.90),
+    "Brazil":         (-15.78,-47.93),  "BR": (-15.78,-47.93),
+    "India":          (28.61,  77.21),  "IN": (28.61,  77.21),
+    "Turkey":         (39.93,  32.86),  "TR": (39.93,  32.86),
+    "Nigeria":        (9.07,    7.40),  "NG": (9.07,    7.40),
+    "Indonesia":      (-6.21, 106.85),  "ID": (-6.21, 106.85),
+    "France":         (48.86,   2.35),  "FR": (48.86,   2.35),
+    "United Kingdom": (51.51,  -0.13),  "GB": (51.51,  -0.13),
+    "Tunisia":        (36.82,  10.18),  "TN": (36.82,  10.18),
+    "Morocco":        (33.99,  -6.85),  "MA": (33.99,  -6.85),
 }
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ st.markdown("""
 h1, h2, h3, .stMetric label        { color: #e6edf3 !important; }
 .stMetric [data-testid="stMetricValue"] { color: #58a6ff !important; font-size: 2rem !important; }
 .alert-card {
-    padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;
+    padding: 12px 16px; border-radius: 6px; margin-bottom: 8px;
     border-left: 4px solid; background: #161b22;
 }
 .kpi-bar { background: #161b22; padding: 10px; border-radius: 8px; text-align:center; }
@@ -120,7 +120,7 @@ def render_risk_gauge(incidents: list):
     ))
     fig.update_layout(
         height=250, margin=dict(t=40, b=0, l=10, r=10),
-        paper_bgcolor="#0d1117", font_color="#e6edf3",
+        paper_bgcolor="#0d1117", font_color="#e6edf3" , font=dict(size=20),
     )
     st.plotly_chart(fig, use_container_width=True)
     c1, c2 = st.columns(2)
@@ -333,11 +333,11 @@ def dashboard():
     # ── KPI bar ──────────────────────────────────────────────────────────────
     if stats:
         k = st.columns(5)
-        k[0].metric("Raw Records",   stats.get("raw_records",   "—"))
-        k[1].metric("IOCs",          stats.get("iocs",          "—"))
-        k[2].metric("Incidents",     stats.get("incidents",     len(incidents)))
-        k[3].metric("Predictions",   stats.get("predictions",   "—"))
-        k[4].metric("Compliance Hits",stats.get("compliance_breaches", "—"))
+        k[0].metric("Raw Records",    stats.get("raw_count",             len(incidents)))
+        k[1].metric("IOCs",           stats.get("ioc_count",             "—"))
+        k[2].metric("Incidents",      stats.get("incident_count",        len(incidents)))
+        k[3].metric("Predictions",    stats.get("prediction_count",      "—"))
+        k[4].metric("Compliance Hits",stats.get("compliance_breach_count","—"))
 
     st.divider()
 
@@ -385,7 +385,14 @@ def dashboard():
     else:
         pred_df = pd.DataFrame(predictions)
         cols_show = [c for c in ["sector","threat_type","forecast_7d","trend","confidence"] if c in pred_df.columns]
-        pred_df["trend"] = pred_df.get("trend", "").map(lambda t: f"{TREND_ICON.get(t,'')} {t}")
+        if "trend" in pred_df.columns:
+            pred_df["trend"] = pred_df["trend"].apply(lambda t: f"{TREND_ICON.get(t, '')} {t}" if t else "—")
+        if "threat_type" in pred_df.columns:
+            pred_df["threat_type"] = pred_df["threat_type"].apply(
+                lambda t: t.replace("apt:", "APT: ").replace("cve:", "CVE: ").replace("anomaly:", "⚠ ").replace("_", " ") if t else "—"
+            )
+        if "confidence" in pred_df.columns:
+            pred_df["confidence"] = pred_df["confidence"].apply(lambda c: f"{round(c * 100)}%" if c is not None else "—")
         st.dataframe(pred_df[cols_show], use_container_width=True)
 
 
