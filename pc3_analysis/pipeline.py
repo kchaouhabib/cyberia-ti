@@ -130,21 +130,23 @@ def _push_prediction(client: httpx.Client, prediction: Prediction) -> None:
 
 
 def _stable_incident_id(incident: Incident) -> str:
-    """Derive a UUID-shaped, deterministic ID from the incident's bucket signature.
+    """Derive a UUID-shaped, deterministic ID from the incident's bucket key.
 
-    We re-correlate every cycle. Without a stable ID, PC1's UPSERT-on-id behaviour
-    would create a new incident row each tick. Hash the (source + earliest_seen
-    + sorted IOC fingerprints) so the same bucket always lands on the same row.
+    Bucket key = (source, earliest_seen). NOT the IOC fingerprint set: as new
+    events land in the same bucket the IOC count grows, and if the hash
+    depended on it we'd mint a new incident row every cycle instead of
+    UPSERTing the existing one. The Banque Atlas scenario then shows up as
+    four progressively-larger duplicate incidents instead of one growing
+    campaign, killing the demo punchline.
+
+    The correlator opens a new bucket whenever an IOC arrives more than the
+    correlation window (1h) after the bucket's earliest member, so
+    earliest_seen IS the bucket's identity.
     """
     if not incident.iocs:
         seed = f"empty|{incident.detected_at.isoformat()}"
     else:
-        ioc_fingerprints = sorted(f"{i.value}::{i.type}" for i in incident.iocs)
-        seed = (
-            f"{incident.iocs[0].source}"
-            f"|{incident.detected_at.isoformat()}"
-            f"|{'|'.join(ioc_fingerprints)}"
-        )
+        seed = f"{incident.iocs[0].source}|{incident.detected_at.isoformat()}"
     digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
     return f"{digest[:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"
 

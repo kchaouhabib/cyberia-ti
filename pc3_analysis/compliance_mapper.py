@@ -92,37 +92,42 @@ _INTRUSION_THREAT_TYPES: frozenset[str] = frozenset(
 def _infer_assets(incident: Incident) -> list[str]:
     """Best-effort asset-type inference.
 
-    Layered:
-      1. Keyword scan over IOC values + summary (precise; misses often).
-      2. Fallback by APT attribution (Lazarus -> swift_terminal, FIN7 -> ...).
-      3. Fallback by threat_type (phishing -> customer_db, c2 -> ...).
+    All stages ACCUMULATE - they do not short-circuit. A multi-event scenario
+    with phishing IOCs (-> customer_db), a Lazarus attribution
+    (-> swift_terminal), AND payment-keyword hits (-> payment_gateway)
+    should end up with all three assets, not just the first stage that fires.
 
-    The fallbacks guarantee that any incident with at least one classified
-    IOC ends up with at least one asset class, so PC4's "Targeted assets"
-    panel and PC1's PDF report never render "(none)".
+      0. Authoritative ``EnrichedIOC.asset_type`` from PC2 (highest precedence
+         when present - PC2 copies it from the parent RawThreatRecord).
+      1. Keyword scan over IOC values + summary text (precise but misses
+         when IOC values are bare IPs / hashes).
+      2. APT attribution fallback (Lazarus -> swift_terminal, FIN7 -> ...).
+      3. threat_type fallback (phishing -> customer_db, c2 -> ...).
     """
-    blob_parts: list[str] = []
+    inferred: set[str] = set()
+
     for ioc in incident.iocs:
-        blob_parts.append(ioc.value)
+        explicit = getattr(ioc, "asset_type", None)
+        if explicit:
+            inferred.add(explicit)
+
+    blob_parts: list[str] = [ioc.value for ioc in incident.iocs]
     if incident.summary:
         blob_parts.append(incident.summary)
     blob = " ".join(blob_parts)
+    for asset, pattern in _ASSET_KEYWORDS.items():
+        if pattern.search(blob):
+            inferred.add(asset)
 
-    inferred: set[str] = {
-        asset for asset, pattern in _ASSET_KEYWORDS.items() if pattern.search(blob)
-    }
+    for ioc in incident.iocs:
+        apt = (ioc.apt_attribution or "").lower()
+        if apt in _APT_TO_ASSET:
+            inferred.add(_APT_TO_ASSET[apt])
 
-    if not inferred:
-        for ioc in incident.iocs:
-            apt = (ioc.apt_attribution or "").lower()
-            if apt in _APT_TO_ASSET:
-                inferred.add(_APT_TO_ASSET[apt])
-
-    if not inferred:
-        for ioc in incident.iocs:
-            threat = (ioc.threat_type or "").lower()
-            if threat in _THREAT_TO_ASSET:
-                inferred.add(_THREAT_TO_ASSET[threat])
+    for ioc in incident.iocs:
+        threat = (ioc.threat_type or "").lower()
+        if threat in _THREAT_TO_ASSET:
+            inferred.add(_THREAT_TO_ASSET[threat])
 
     return sorted(inferred)
 
