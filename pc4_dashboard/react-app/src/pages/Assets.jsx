@@ -2,13 +2,13 @@ import { motion } from "framer-motion";
 import { Database, AlertTriangle, CheckCircle, Zap } from "lucide-react";
 import Card, { CardTitle } from "../components/Card";
 
-const SEV_COLOR = { critical: "#ff2d55", high: "#ff9f0a", medium: "#ffd60a", low: "#30d158" };
+const SEV = { critical: "#ff2d78", high: "#ff8c00", medium: "#ffd700", low: "#00ff88" };
 
 const ASSET_META = {
-  treasury:        { label: "🏛 Treasury",        desc: "Core banking, FX, investments" },
-  payment_gateway: { label: "💳 Payment Gateway",  desc: "Card processing, SWIFT MT103" },
-  customer_db:     { label: "🗄 Customer DB",      desc: "PII, account data, KYC records" },
-  swift_terminal:  { label: "⚡ SWIFT Terminal",   desc: "Interbank messaging, wire transfers" },
+  treasury:        { label: "TREASURY",        icon: "🏛", desc: "Core banking, FX, investments" },
+  payment_gateway: { label: "PAYMENT GATEWAY", icon: "💳", desc: "Card processing, SWIFT MT103" },
+  customer_db:     { label: "CUSTOMER DB",     icon: "🗄", desc: "PII, account data, KYC records" },
+  swift_terminal:  { label: "SWIFT TERMINAL",  icon: "⚡", desc: "Interbank messaging, wire transfers" },
 };
 
 const GEO_MAP = {
@@ -20,74 +20,13 @@ const GEO_MAP = {
   "India": "🇮🇳", "IN": "🇮🇳", "Turkey": "🇹🇷", "TR": "🇹🇷",
   "Nigeria": "🇳🇬", "NG": "🇳🇬", "France": "🇫🇷", "FR": "🇫🇷",
   "United Kingdom": "🇬🇧", "GB": "🇬🇧", "Tunisia": "🇹🇳", "TN": "🇹🇳",
+  "Morocco": "🇲🇦", "MA": "🇲🇦",
 };
-
-function AssetCard({ assetKey, incidents, delay }) {
-  const meta = ASSET_META[assetKey];
-  const hot  = incidents.length > 0;
-  const maxR = Math.max(...incidents.map(i => i.risk_score || 0), 0);
-  const sev  = incidents.find(i => i.severity === "critical") ? "critical"
-             : incidents.find(i => i.severity === "high")     ? "high"
-             : incidents.find(i => i.severity === "medium")   ? "medium"
-             : incidents.length ? "low" : null;
-  const c    = SEV_COLOR[sev] || "#30d158";
-
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay }} whileHover={{ scale: 1.02, y: -2 }}
-      className={`grad-border p-5 ${hot ? "glow-red" : ""}`}>
-      {/* Title */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <div className="text-base font-bold text-[#e8f4f8]">{meta?.label}</div>
-          <div className="text-xs text-[#64748b] mt-0.5">{meta?.desc}</div>
-        </div>
-        {hot
-          ? <AlertTriangle size={20} style={{ color: c }} className="blink" />
-          : <CheckCircle size={20} className="text-green-400" />
-        }
-      </div>
-
-      {/* Stats */}
-      <div className="flex items-end gap-4 mb-4">
-        <div>
-          <div className="text-4xl font-black" style={{ color: hot ? c : "#30d158", textShadow: hot ? `0 0 16px ${c}60` : "0 0 10px #30d15840" }}>
-            {incidents.length}
-          </div>
-          <div className="text-xs text-[#64748b]">incident{incidents.length !== 1 ? "s" : ""}</div>
-        </div>
-        {hot && (
-          <div>
-            <div className="text-2xl font-black text-[#ff9f0a]">{maxR}</div>
-            <div className="text-xs text-[#64748b]">max risk</div>
-          </div>
-        )}
-      </div>
-
-      {/* Status */}
-      <div className="flex items-center gap-2 text-xs mb-3">
-        <span className="w-2 h-2 rounded-full" style={{ background: hot ? c : "#30d158" }} />
-        <span style={{ color: hot ? c : "#30d158" }}>{hot ? `${sev?.toUpperCase()} THREAT` : "SECURE"}</span>
-      </div>
-
-      {/* Recent incidents */}
-      {incidents.slice(0, 3).map(inc => (
-        <div key={inc.id} className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg mb-1"
-          style={{ background: (SEV_COLOR[inc.severity] || "#30d158") + "10", border: `1px solid ${SEV_COLOR[inc.severity] || "#30d158"}20` }}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: SEV_COLOR[inc.severity] || "#30d158" }} />
-          <span className="font-mono text-[#64748b]">{inc.id?.slice(0, 8)}</span>
-          <span className="ml-auto font-bold" style={{ color: SEV_COLOR[inc.severity] }}>{inc.risk_score}</span>
-        </div>
-      ))}
-      {!hot && <div className="text-xs text-green-400 text-center py-2">✓ No active threats</div>}
-    </motion.div>
-  );
-}
 
 function inferAssets(inc) {
   if (inc.targeted_assets?.length) return inc.targeted_assets;
-  const types  = new Set((inc.iocs || []).map(i => i.threat_type).filter(Boolean));
-  const techs  = new Set(inc.mitre_techniques || []);
+  const types = new Set((inc.iocs || []).map(i => i.threat_type).filter(Boolean));
+  const techs = new Set(inc.mitre_techniques || []);
   const assets = new Set();
   if (types.has("phishing")         || techs.has("T1566") || techs.has("T1539")) assets.add("customer_db");
   if (types.has("exfiltration")     || techs.has("T1041"))                        assets.add("treasury");
@@ -98,68 +37,147 @@ function inferAssets(inc) {
   return [...assets];
 }
 
+function AssetCard({ assetKey, incidents, delay }) {
+  const meta = ASSET_META[assetKey];
+  const hot  = incidents.length > 0;
+  const maxR = Math.max(...incidents.map(i => i.risk_score || 0), 0);
+  const sev  = incidents.find(i => i.severity === "critical")?.severity
+            || incidents.find(i => i.severity === "high")?.severity
+            || incidents.find(i => i.severity === "medium")?.severity
+            || (incidents.length ? "low" : null);
+  const c    = SEV[sev] || "#00ff88";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay, type: "spring", stiffness: 250, damping: 22 }}
+      className="card p-5"
+      style={hot ? { borderColor: `${c}35`, boxShadow: `0 0 24px ${c}10` } : {}}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="text-2xl mb-1">{meta?.icon}</div>
+          <div className="font-orb font-bold" style={{ fontSize: 11, color: "var(--text)", letterSpacing: "0.08em" }}>{meta?.label}</div>
+          <div className="section-label mt-0.5">{meta?.desc}</div>
+        </div>
+        {hot
+          ? <AlertTriangle size={18} style={{ color: c }} className="blink" />
+          : <CheckCircle  size={18} style={{ color: "var(--low)" }} />
+        }
+      </div>
+
+      <div className="flex items-end gap-4 mb-4">
+        <div>
+          <div className="font-orb font-black"
+            style={{ fontSize: 40, color: hot ? c : "var(--low)", textShadow: `0 0 20px ${hot ? c : "var(--low)"}80` }}>
+            {incidents.length}
+          </div>
+          <div className="section-label">INCIDENT{incidents.length !== 1 ? "S" : ""}</div>
+        </div>
+        {hot && maxR > 0 && (
+          <div>
+            <div className="font-orb font-black" style={{ fontSize: 24, color: "var(--high)" }}>{maxR}</div>
+            <div className="section-label">MAX RISK</div>
+          </div>
+        )}
+      </div>
+
+      {/* Status pill */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-1.5 h-1.5 rounded-full" style={{ background: hot ? c : "var(--low)", boxShadow: `0 0 8px ${hot ? c : "var(--low)"}` }} />
+        <span className="font-orb" style={{ fontSize: 9, color: hot ? c : "var(--low)", letterSpacing: "0.12em" }}>
+          {hot ? `${(sev || "").toUpperCase()} THREAT ACTIVE` : "SECURE"}
+        </span>
+      </div>
+
+      {/* Linked incidents */}
+      {incidents.slice(0, 3).map(inc => (
+        <div key={inc.id} className="flex items-center gap-2 px-2 py-1.5 rounded mb-1"
+          style={{ background: `${SEV[inc.severity] || "#00ff88"}0a`, border: `1px solid ${SEV[inc.severity] || "#00ff88"}18` }}>
+          <span className="w-1 h-1 rounded-full shrink-0" style={{ background: SEV[inc.severity] || "#00ff88" }} />
+          <span className="mono flex-1" style={{ fontSize: 9, color: "var(--muted)" }}>{inc.id?.slice(0, 12)}</span>
+          <span className="mono font-bold" style={{ fontSize: 10, color: SEV[inc.severity] }}>{inc.risk_score}</span>
+        </div>
+      ))}
+      {!hot && <div className="mono text-center py-2" style={{ fontSize: 9, color: "var(--low)", letterSpacing: "0.1em" }}>✓ NO ACTIVE THREATS</div>}
+    </motion.div>
+  );
+}
+
 export default function Assets({ incidents }) {
   const buckets = { treasury: [], payment_gateway: [], customer_db: [], swift_terminal: [] };
   incidents.forEach(inc => inferAssets(inc).forEach(a => { if (buckets[a]) buckets[a].push(inc); }));
 
-  // Attack origins from IOC geolocation
   const geoHits = {};
   incidents.forEach(inc => inc.iocs?.forEach(ioc => {
     if (ioc.geolocation) geoHits[ioc.geolocation] = (geoHits[ioc.geolocation] || 0) + 1;
   }));
   const geoSorted = Object.entries(geoHits).sort((a, b) => b[1] - a[1]);
+  const geoMax = geoSorted[0]?.[1] || 1;
 
-  // APT groups
   const aptHits = {};
   incidents.forEach(inc => inc.iocs?.forEach(ioc => {
     if (ioc.apt_attribution) aptHits[ioc.apt_attribution] = (aptHits[ioc.apt_attribution] || 0) + 1;
   }));
-
-  const swiftHit = buckets.swift_terminal.length > 0;
+  const aptSorted = Object.entries(aptHits).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-4">
-      {/* SWIFT emergency banner */}
-      {swiftHit && (
-        <motion.div animate={{ scale: [1, 1.01, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}
-          className="rounded-xl p-4 border border-red-500/60 bg-red-500/10 flex items-center gap-3">
-          <Zap size={20} className="text-red-400 blink" />
+      {/* SWIFT emergency */}
+      {buckets.swift_terminal.length > 0 && (
+        <motion.div
+          animate={{ opacity: [1, 0.7, 1] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="rounded-lg p-4 flex items-center gap-3"
+          style={{ background: "var(--critical-bg)", border: "1px solid var(--critical-b)", boxShadow: "0 0 24px rgba(255,45,120,0.15)" }}>
+          <Zap size={18} style={{ color: "var(--critical)" }} className="blink" />
           <div>
-            <div className="text-red-400 font-bold">🚨 SWIFT Terminal Compromised</div>
-            <div className="text-xs text-red-300/70">{buckets.swift_terminal.length} incident(s) — SWIFT CSP 2.x breach — notify within 24h</div>
+            <div className="font-orb font-bold" style={{ fontSize: 11, color: "var(--critical)", letterSpacing: "0.12em" }}>
+              SWIFT TERMINAL COMPROMISED
+            </div>
+            <div className="mono mt-0.5" style={{ fontSize: 9, color: "rgba(255,45,120,0.7)", letterSpacing: "0.06em" }}>
+              {buckets.swift_terminal.length} INCIDENT(S) — SWIFT CSP 2.x BREACH — NOTIFY WITHIN 24H
+            </div>
           </div>
         </motion.div>
       )}
 
-      {/* Asset cards */}
-      <div className="grid grid-cols-2 gap-4">
-        {Object.entries(buckets).slice(0, 4).map(([key, incs], i) => (
-          <AssetCard key={key} assetKey={key} incidents={incs} delay={i * 0.08} />
+      {/* Asset grid */}
+      <div className="grid grid-cols-4 gap-4">
+        {Object.entries(buckets).map(([key, incs], i) => (
+          <AssetCard key={key} assetKey={key} incidents={incs} delay={i * 0.07} />
         ))}
       </div>
 
-      {/* Attack intelligence */}
+      {/* Intelligence panels */}
       <div className="grid grid-cols-2 gap-4">
         {/* Geo origins */}
         <Card delay={0.3}>
-          <CardTitle icon={Database} title="Attack Origins" badge={geoSorted.length} />
+          <CardTitle icon={Database} title="ATTACK ORIGINS" badge={geoSorted.length} />
           {geoSorted.length === 0 ? (
-            <p className="text-xs text-[#64748b] text-center py-6">No geolocated IOCs yet.</p>
+            <p className="mono text-center py-6" style={{ color: "var(--muted)", fontSize: 10 }}>NO GEOLOCATED IOCs YET</p>
           ) : (
             <div className="space-y-2">
               {geoSorted.map(([country, count], i) => (
-                <motion.div key={country} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                <motion.div key={country}
+                  initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.05 }}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#0a1628] border border-[#1e3a5f]">
-                  <span className="text-lg">{GEO_MAP[country] || "🌐"}</span>
-                  <span className="text-sm text-[#e8f4f8] flex-1">{country}</span>
+                  className="flex items-center gap-3 px-3 py-2 rounded"
+                  style={{ background: "var(--bg-row)", border: "1px solid var(--border)" }}>
+                  <span className="text-base shrink-0">{GEO_MAP[country] || "🌐"}</span>
+                  <span style={{ color: "var(--text)", fontSize: 11, flex: 1 }}>{country}</span>
                   <div className="flex items-center gap-2">
-                    <div className="h-1.5 rounded-full bg-red-500/30 w-16 overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${(count / (geoSorted[0]?.[1] || 1)) * 100}%` }}
-                        transition={{ delay: 0.5, duration: 0.6 }}
-                        className="h-full bg-red-500 rounded-full" />
+                    <div className="prog-track" style={{ width: 64 }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(count / geoMax) * 100}%` }}
+                        transition={{ delay: 0.5, duration: 0.7 }}
+                        className="prog-bar"
+                        style={{ background: "var(--critical)", boxShadow: "0 0 6px rgba(255,45,120,0.4)" }}
+                      />
                     </div>
-                    <span className="text-xs font-bold text-red-400 w-4">{count}</span>
+                    <span className="mono font-bold tabular-nums" style={{ fontSize: 10, color: "var(--critical)", width: 16 }}>{count}</span>
                   </div>
                 </motion.div>
               ))}
@@ -167,23 +185,32 @@ export default function Assets({ incidents }) {
           )}
         </Card>
 
-        {/* APT panel */}
+        {/* APT groups */}
         <Card delay={0.35}>
-          <CardTitle icon={AlertTriangle} title="Active APT Groups" badge={Object.keys(aptHits).length} />
-          {Object.keys(aptHits).length === 0 ? (
-            <p className="text-xs text-[#64748b] text-center py-6">No APT attribution data yet.</p>
+          <CardTitle icon={AlertTriangle} title="ACTIVE APT GROUPS" badge={aptSorted.length} color="var(--high)" />
+          {aptSorted.length === 0 ? (
+            <p className="mono text-center py-6" style={{ color: "var(--muted)", fontSize: 10 }}>NO APT ATTRIBUTION DATA YET</p>
           ) : (
             <div className="space-y-3">
-              {Object.entries(aptHits).sort((a, b) => b[1] - a[1]).map(([apt, count], i) => (
-                <motion.div key={apt} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 + i * 0.08 }}
-                  className="p-3 rounded-xl border border-orange-500/30 bg-orange-500/10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-orange-400 font-bold text-sm uppercase">{apt.replace("-", " ")}</span>
-                    <span className="text-xs text-[#64748b]">{count} IOC{count !== 1 ? "s" : ""}</span>
+              {aptSorted.map(([apt, count], i) => (
+                <motion.div key={apt}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + i * 0.08 }}
+                  className="p-3 rounded-lg"
+                  style={{ background: "var(--high-bg)", border: "1px solid var(--high-b)" }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-orb font-bold uppercase" style={{ fontSize: 10, color: "var(--high)", letterSpacing: "0.12em" }}>
+                      {apt.replace("-", " ")}
+                    </span>
+                    <span className="mono" style={{ fontSize: 9, color: "var(--muted)" }}>{count} IOC{count !== 1 ? "s" : ""}</span>
                   </div>
-                  <div className="h-1 rounded-full bg-orange-500/20 overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ delay: 0.6, duration: 0.8 }}
-                      className="h-full bg-orange-400 rounded-full" />
+                  <div className="prog-track">
+                    <motion.div
+                      initial={{ width: 0 }} animate={{ width: "100%" }}
+                      transition={{ delay: 0.6, duration: 0.9 }}
+                      className="prog-bar"
+                      style={{ background: "var(--high)", boxShadow: "0 0 8px rgba(255,140,0,0.4)" }}
+                    />
                   </div>
                 </motion.div>
               ))}

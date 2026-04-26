@@ -1,32 +1,37 @@
 import { motion } from "framer-motion";
-import { Shield, Clock, AlertOctagon } from "lucide-react";
+import { Shield, Clock, AlertOctagon, CheckCircle } from "lucide-react";
 import Card, { CardTitle } from "../components/Card";
 
 const FRAMEWORKS = [
   { key: "PCI-DSS",    label: "PCI-DSS",      color: "#00d4ff", desc: "Payment Card Industry Data Security Standard" },
-  { key: "SWIFT CSP",  label: "SWIFT CSP",     color: "#ff9f0a", desc: "SWIFT Customer Security Programme (CSCF 2.x)" },
-  { key: "GDPR",       label: "GDPR Art.33",   color: "#ff2d55", desc: "General Data Protection Regulation — 72h notification" },
-  { key: "BCT",        label: "BCT Circular",  color: "#bf5af2", desc: "Banque Centrale de Tunisie — Cybersecurity Circular" },
-  { key: "Basel III",  label: "Basel III ORR", color: "#30d158", desc: "Operational Risk & Resilience framework" },
+  { key: "SWIFT CSP",  label: "SWIFT CSP",     color: "#ff8c00", desc: "SWIFT Customer Security Programme (CSCF 2.x)" },
+  { key: "GDPR",       label: "GDPR Art.33",   color: "#ff2d78", desc: "General Data Protection Regulation — 72h" },
+  { key: "BCT",        label: "BCT Circular",  color: "#8b5cf6", desc: "Banque Centrale de Tunisie — Cybersecurity" },
+  { key: "Basel III",  label: "Basel III ORR", color: "#00ff88", desc: "Operational Risk & Resilience framework" },
 ];
 
 const DEADLINES = {
   "PCI-DSS Req.3":       { text: "Per acquirer contract",    urgency: "medium" },
-  "PCI-DSS Req.10":      { text: "Audit cycle",              urgency: "low" },
-  "PCI-DSS Req.11":      { text: "Audit cycle",              urgency: "low" },
-  "SWIFT CSP CSCF 2.x":  { text: "24 hours → SWIFT",         urgency: "critical" },
-  "GDPR Art.33":          { text: "72 hours → regulator",     urgency: "high" },
+  "PCI-DSS Req.10":      { text: "Audit cycle",              urgency: "low"    },
+  "PCI-DSS Req.11":      { text: "Audit cycle",              urgency: "low"    },
+  "SWIFT CSP CSCF 2.x":  { text: "24 HOURS → SWIFT",         urgency: "critical" },
+  "GDPR Art.33":          { text: "72 HOURS → REGULATOR",     urgency: "high"   },
   "Basel III ORR":        { text: "Per local implementation", urgency: "medium" },
   "BCT Circular":         { text: "Per local circular",       urgency: "medium" },
 };
 
-const URGENCY_COLOR = { critical: "#ff2d55", high: "#ff9f0a", medium: "#ffd60a", low: "#30d158" };
+const URGENCY_COLOR = {
+  critical: "var(--critical)",
+  high:     "var(--high)",
+  medium:   "var(--medium)",
+  low:      "var(--low)",
+};
 
 export default function Compliance({ incidents }) {
   const breachRows = [];
   incidents.forEach(inc =>
     inc.compliance_breaches?.forEach(b =>
-      breachRows.push({ ...DEADLINES[b], breach: b, incId: inc.id?.slice(0, 8), sev: inc.severity, risk: inc.risk_score })
+      breachRows.push({ ...DEADLINES[b], breach: b, incId: inc.id?.slice(0, 10), sev: inc.severity, risk: inc.risk_score })
     )
   );
 
@@ -35,43 +40,54 @@ export default function Compliance({ incidents }) {
       i.compliance_breaches?.some(b => b.includes(fw.key))
     ).length])
   );
-
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
 
   return (
     <div className="space-y-4">
-      {/* Summary header */}
+      {/* Summary banner */}
       <Card danger={total > 0} delay={0}>
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertOctagon size={24} className="text-red-400" />
+          <div className="p-3 rounded-lg" style={{ background: total > 0 ? "var(--critical-bg)" : "var(--low-bg)", border: `1px solid ${total > 0 ? "var(--critical-b)" : "var(--low-b)"}` }}>
+            {total > 0
+              ? <AlertOctagon size={22} style={{ color: "var(--critical)" }} />
+              : <CheckCircle  size={22} style={{ color: "var(--low)" }} />
+            }
           </div>
           <div>
-            <div className="text-2xl font-black neon-red">{total} Active Breach{total !== 1 ? "es" : ""}</div>
-            <div className="text-xs text-[#64748b] mt-0.5">Across {FRAMEWORKS.length} regulatory frameworks</div>
+            <div className="font-orb font-black"
+              style={{ fontSize: 26, color: total > 0 ? "var(--critical)" : "var(--low)", textShadow: total > 0 ? "0 0 20px rgba(255,45,120,0.5)" : "0 0 20px rgba(0,255,136,0.4)" }}>
+              {total} ACTIVE BREACH{total !== 1 ? "ES" : ""}
+            </div>
+            <div className="section-label mt-1">ACROSS {FRAMEWORKS.length} REGULATORY FRAMEWORKS</div>
           </div>
           {total === 0 && (
-            <div className="ml-auto text-green-400 font-semibold text-sm">✓ All frameworks clear</div>
+            <div className="ml-auto font-orb font-bold" style={{ fontSize: 11, color: "var(--low)", letterSpacing: "0.1em" }}>
+              ✓ ALL FRAMEWORKS CLEAR
+            </div>
           )}
         </div>
       </Card>
 
-      {/* Framework cards */}
+      {/* Framework score cards */}
       <div className="grid grid-cols-5 gap-3">
         {FRAMEWORKS.map(({ key, label, color, desc }, i) => {
           const n = counts[key] || 0;
+          const c = n > 0 ? "var(--critical)" : color;
           return (
-            <motion.div key={key} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }} whileHover={{ scale: 1.03, y: -2 }}
-              className={`grad-border p-4 text-center ${n > 0 ? "glow-red" : ""}`}>
-              <div className="text-xs text-[#64748b] mb-2">{label}</div>
-              <motion.div key={n} initial={{ scale: 0.5 }} animate={{ scale: 1 }}
-                className="text-4xl font-black mb-1"
-                style={{ color: n > 0 ? "#ff2d55" : color, textShadow: n > 0 ? "0 0 16px #ff2d5580" : `0 0 8px ${color}40` }}>
+            <motion.div key={key}
+              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07, type: "spring", stiffness: 250, damping: 22 }}
+              className="card p-5 text-center"
+              style={n > 0 ? { borderColor: "var(--critical-b)", boxShadow: "0 0 20px rgba(255,45,120,0.10)" } : {}}
+            >
+              <div className="section-label mb-3">{label}</div>
+              <motion.div key={n} initial={{ scale: 0.4 }} animate={{ scale: 1 }}
+                className="font-orb font-black mb-1"
+                style={{ fontSize: 40, color: c, textShadow: `0 0 20px ${c}70` }}>
                 {n}
               </motion.div>
-              <div className="text-xs text-[#64748b]">incident{n !== 1 ? "s" : ""}</div>
-              <div className="text-xs text-[#1e3a5f] mt-2 leading-tight">{desc}</div>
+              <div className="section-label">INCIDENT{n !== 1 ? "S" : ""}</div>
+              <div className="mt-2" style={{ fontSize: 9, color: "var(--dim)", lineHeight: 1.4 }}>{desc}</div>
             </motion.div>
           );
         })}
@@ -79,28 +95,31 @@ export default function Compliance({ incidents }) {
 
       {/* Breach table */}
       <Card delay={0.2}>
-        <CardTitle icon={Clock} title="Active Breach Details" badge={breachRows.length} />
+        <CardTitle icon={Clock} title="ACTIVE BREACH DETAILS" badge={breachRows.length} />
         {breachRows.length === 0 ? (
-          <p className="text-center text-[#64748b] text-sm py-8">No active compliance breaches. System compliant.</p>
+          <p className="mono text-center py-8" style={{ color: "var(--muted)", fontSize: 11, letterSpacing: "0.1em" }}>
+            NO ACTIVE COMPLIANCE BREACHES — SYSTEM COMPLIANT
+          </p>
         ) : (
-          <div className="space-y-2">
-            {/* Header */}
-            <div className="grid grid-cols-4 gap-3 text-xs text-[#64748b] uppercase tracking-wider px-3 pb-2 border-b border-[#1e3a5f]">
-              <span>Incident</span><span>Breach</span><span>Notification Deadline</span><span>Urgency</span>
+          <div>
+            <div className="soc-row section-label" style={{ gridTemplateColumns: "110px 1fr 1fr 100px", color: "var(--dim)" }}>
+              <span>INCIDENT</span><span>BREACH</span><span>NOTIFICATION DEADLINE</span><span>URGENCY</span>
             </div>
             {breachRows.map((r, i) => {
-              const uc = URGENCY_COLOR[r.urgency] || "#64748b";
+              const uc = URGENCY_COLOR[r.urgency] || "var(--muted)";
               return (
-                <motion.div key={i} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="grid grid-cols-4 gap-3 items-center px-3 py-2.5 rounded-lg bg-[#0a1628] border border-[#1e3a5f] text-sm">
-                  <span className="font-mono text-xs text-[#64748b]">{r.incId}</span>
-                  <span className="text-red-400 font-semibold text-xs">{r.breach}</span>
+                  className={`soc-row row-${r.urgency}`}
+                  style={{ gridTemplateColumns: "110px 1fr 1fr 100px" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--muted)" }}>{r.incId}</span>
+                  <span className="mono font-bold" style={{ fontSize: 10, color: "var(--critical)" }}>{r.breach}</span>
                   <div className="flex items-center gap-2">
-                    <Clock size={12} style={{ color: uc }} />
-                    <span className="text-xs" style={{ color: uc }}>{r.text}</span>
+                    <Clock size={10} style={{ color: uc }} />
+                    <span className="mono" style={{ fontSize: 10, color: uc }}>{r.text}</span>
                   </div>
-                  <span className="text-xs font-bold uppercase" style={{ color: uc }}>{r.urgency}</span>
+                  <span className={`badge badge-${r.urgency}`}>{r.urgency}</span>
                 </motion.div>
               );
             })}
@@ -108,22 +127,22 @@ export default function Compliance({ incidents }) {
         )}
       </Card>
 
-      {/* Regulation quick reference */}
+      {/* Quick reference */}
       <Card delay={0.3}>
-        <CardTitle icon={Shield} title="Regulation Quick Reference" />
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <CardTitle icon={Shield} title="REGULATION QUICK REFERENCE" />
+        <div className="grid grid-cols-2 gap-2 text-xs">
           {[
-            ["PCI-DSS Req.3", "Protect stored cardholder data"],
-            ["PCI-DSS Req.10", "Track and monitor access to network resources"],
-            ["PCI-DSS Req.11", "Test security systems and processes"],
+            ["PCI-DSS Req.3",      "Protect stored cardholder data"],
+            ["PCI-DSS Req.10",     "Track & monitor access to network resources"],
+            ["PCI-DSS Req.11",     "Test security systems and processes"],
             ["SWIFT CSP CSCF 2.x", "Unauthorized access to SWIFT infrastructure"],
-            ["GDPR Art.33", "Personal data breach — notify regulator within 72h"],
-            ["Basel III ORR", "Operational risk event — resilience reporting"],
-            ["BCT Circular", "Cyber incident affecting bank operations in Tunisia"],
+            ["GDPR Art.33",        "Personal data breach — notify regulator within 72h"],
+            ["Basel III ORR",      "Operational risk event — resilience reporting"],
+            ["BCT Circular",       "Cyber incident affecting Tunisian bank operations"],
           ].map(([reg, desc]) => (
-            <div key={reg} className="flex gap-2 bg-[#0a1628] border border-[#1e3a5f] rounded-lg p-2.5">
-              <span className="text-[#00d4ff] font-semibold shrink-0">{reg}</span>
-              <span className="text-[#64748b]">{desc}</span>
+            <div key={reg} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--bg-row)", border: "1px solid var(--border)" }}>
+              <span className="mono font-bold shrink-0" style={{ color: "var(--cyan)", fontSize: 10 }}>{reg}</span>
+              <span style={{ color: "var(--muted)", fontSize: 10 }}>{desc}</span>
             </div>
           ))}
         </div>

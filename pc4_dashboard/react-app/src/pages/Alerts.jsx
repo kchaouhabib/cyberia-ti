@@ -1,111 +1,147 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, Zap } from "lucide-react";
 import Card from "../components/Card";
 
-const SEV_COLOR = { critical: "#ff2d55", high: "#ff9f0a", medium: "#ffd60a", low: "#30d158" };
-const SEV_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
-const FILTERS   = ["all", "critical", "high", "medium", "low"];
+const SEV   = { critical: "#ff2d78", high: "#ff8c00", medium: "#ffd700", low: "#00ff88" };
+const ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
+const TABS  = ["all", "critical", "high", "medium", "low"];
 
 function AlertRow({ inc, index }) {
   const [open, setOpen] = useState(false);
-  const c = SEV_COLOR[inc.severity] || "#64748b";
-  const aptSet = [...new Set(inc.iocs?.map(i => i.apt_attribution).filter(Boolean))];
+  const c    = SEV[inc.severity] || "#4a5280";
+  const apts = [...new Set(inc.iocs?.map(i => i.apt_attribution).filter(Boolean))];
+  const isAi = inc.summary && !/^\d+ IOC\(s\) from/.test(inc.summary);
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ delay: index * 0.04 }}
-      className="rounded-xl overflow-hidden mb-3"
-      style={{ border: `1px solid ${c}30`, background: `${c}08` }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ delay: index * 0.035 }}
+      className="rounded-lg overflow-hidden mb-2"
+      style={{
+        border: `1px solid ${c}28`,
+        background: `${c}06`,
+        boxShadow: open ? `0 0 20px ${c}12` : "none",
+      }}
     >
       {/* Header row */}
-      <button className="w-full flex items-center gap-3 px-4 py-3 text-left" onClick={() => setOpen(o => !o)}>
-        <span className="w-2.5 h-2.5 rounded-full blink shrink-0" style={{ background: c }} />
-        <span className="text-xs font-black w-20 shrink-0" style={{ color: c, textShadow: `0 0 8px ${c}80` }}>
-          {inc.severity?.toUpperCase()}
-        </span>
-        <span className="font-mono text-xs text-[#64748b]">{inc.id?.slice(0, 8)}</span>
+      <button
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-left"
+        style={{ minHeight: 42 }}
+        onClick={() => setOpen(o => !o)}
+      >
+        {/* Left severity bar */}
+        <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ background: c, boxShadow: `0 0 8px ${c}` }} />
 
-        {/* MITRE badges */}
-        <div className="flex gap-1 flex-wrap">
+        <span className={`badge badge-${inc.severity} shrink-0`}>{inc.severity}</span>
+
+        <span className="mono shrink-0" style={{ fontSize: 10, color: "var(--muted)" }}>
+          {inc.id?.slice(0, 10)}
+        </span>
+
+        {/* MITRE */}
+        <div className="flex gap-1 flex-wrap flex-1 min-w-0">
           {inc.mitre_techniques?.slice(0, 3).map(t => (
-            <span key={t} className="text-xs bg-[#00d4ff15] text-[#00d4ff] border border-[#00d4ff25] rounded px-1.5 py-0.5">
+            <span key={t} className="mono"
+              style={{ fontSize: 9, background: "rgba(0,212,255,0.07)", color: "var(--cyan)", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 2, padding: "1px 5px" }}>
               {t}
             </span>
           ))}
         </div>
 
-        <span className="ml-auto text-xs text-[#64748b]">{inc.detected_at?.slice(11, 19)}</span>
-        <span className="text-lg font-black mx-2" style={{ color: c }}>{inc.risk_score}</span>
-        {open ? <ChevronUp size={14} className="text-[#64748b]" /> : <ChevronDown size={14} className="text-[#64748b]" />}
+        {/* Score */}
+        <span className="font-orb font-black tabular-nums shrink-0"
+          style={{ fontSize: 16, color: c, textShadow: `0 0 10px ${c}80` }}>
+          {inc.risk_score}
+        </span>
+
+        <span className="mono shrink-0" style={{ fontSize: 9, color: "var(--muted)" }}>
+          {inc.detected_at?.slice(11, 19)}
+        </span>
+
+        {open
+          ? <ChevronUp size={13} style={{ color: "var(--muted)" }} />
+          : <ChevronDown size={13} style={{ color: "var(--muted)" }} />
+        }
       </button>
 
-      {/* Expanded detail */}
+      {/* Expanded */}
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
-            className="border-t px-4 py-3 space-y-3" style={{ borderColor: c + "25" }}>
-
-            {/* Summary */}
-            {(() => {
-              const isAi = inc.summary && !/^\d+ IOC\(s\) from/.test(inc.summary);
-              return (
-                <div className={`rounded-lg px-3 py-2.5 ${isAi ? "bg-[#00d4ff08] border border-[#00d4ff20]" : "bg-[#0a1628] border border-[#1e3a5f]"}`}>
-                  {isAi && (
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-[10px] bg-[#00d4ff15] text-[#00d4ff] border border-[#00d4ff30] rounded-full px-2 py-0.5 font-bold tracking-wider">
-                        ✦ AI CISO SUMMARY
-                      </span>
-                    </div>
-                  )}
-                  <p className="text-sm text-[#e8f4f8] leading-relaxed">
-                    {inc.summary || "CISO executive summary — generated by LLM (PC2 Ollama)."}
-                  </p>
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="border-t px-4 py-3 space-y-3"
+            style={{ borderColor: `${c}20` }}
+          >
+            {/* AI summary */}
+            <div className={`rounded-lg px-3 py-2.5 ${isAi ? "border" : ""}`}
+              style={isAi
+                ? { background: "rgba(0,212,255,0.05)", borderColor: "rgba(0,212,255,0.15)" }
+                : { background: "var(--bg-row)", border: "1px solid var(--border)" }}>
+              {isAi && (
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="font-orb"
+                    style={{ fontSize: 8, background: "rgba(0,212,255,0.10)", color: "var(--cyan)", border: "1px solid rgba(0,212,255,0.25)", borderRadius: 2, padding: "2px 7px", letterSpacing: "0.1em" }}>
+                    ✦ AI CISO SUMMARY
+                  </span>
                 </div>
-              );
-            })()}
+              )}
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>
+                {inc.summary || "CISO executive summary — generated by LLM (PC2 Ollama)."}
+              </p>
+            </div>
 
             <div className="grid grid-cols-3 gap-3 text-xs">
               {/* Assets */}
               <div>
-                <div className="text-[#64748b] mb-1 uppercase tracking-wider text-xs">Targeted Assets</div>
+                <div className="section-label mb-2">TARGETED ASSETS</div>
                 <div className="space-y-1">
-                  {inc.targeted_assets?.length ? inc.targeted_assets.map(a => (
-                    <span key={a} className="block bg-[#0a1628] border border-[#1e3a5f] rounded px-2 py-1">{a}</span>
-                  )) : <span className="text-[#64748b]">Unknown</span>}
+                  {inc.targeted_assets?.length
+                    ? inc.targeted_assets.map(a => (
+                      <span key={a} className="block mono rounded px-2 py-1"
+                        style={{ background: "var(--bg-row)", border: "1px solid var(--border)", fontSize: 10 }}>{a}</span>
+                    ))
+                    : <span style={{ color: "var(--muted)" }}>Unknown</span>
+                  }
                 </div>
               </div>
 
               {/* Compliance */}
               <div>
-                <div className="text-[#64748b] mb-1 uppercase tracking-wider text-xs">Compliance Breaches</div>
+                <div className="section-label mb-2">COMPLIANCE BREACHES</div>
                 <div className="space-y-1">
-                  {inc.compliance_breaches?.length ? inc.compliance_breaches.map(b => (
-                    <span key={b} className="block bg-red-500/10 border border-red-500/30 text-red-400 rounded px-2 py-1">{b}</span>
-                  )) : <span className="text-green-400">None</span>}
+                  {inc.compliance_breaches?.length
+                    ? inc.compliance_breaches.map(b => (
+                      <span key={b} className="block mono rounded px-2 py-1"
+                        style={{ background: "var(--critical-bg)", border: "1px solid var(--critical-b)", color: "var(--critical)", fontSize: 10 }}>{b}</span>
+                    ))
+                    : <span style={{ color: "var(--low)" }}>✓ None</span>
+                  }
                 </div>
               </div>
 
               {/* APT */}
               <div>
-                <div className="text-[#64748b] mb-1 uppercase tracking-wider text-xs">APT Attribution</div>
+                <div className="section-label mb-2">APT ATTRIBUTION</div>
                 <div className="space-y-1">
-                  {aptSet.length ? aptSet.map(a => (
-                    <span key={a} className="block bg-orange-500/10 border border-orange-500/30 text-orange-400 rounded px-2 py-1 uppercase">
-                      {a}
-                    </span>
-                  )) : <span className="text-[#64748b]">Unknown</span>}
+                  {apts.length
+                    ? apts.map(a => (
+                      <span key={a} className="block mono uppercase rounded px-2 py-1"
+                        style={{ background: "var(--high-bg)", border: "1px solid var(--high-b)", color: "var(--high)", fontSize: 10 }}>{a}</span>
+                    ))
+                    : <span style={{ color: "var(--muted)" }}>Unknown</span>
+                  }
                 </div>
               </div>
             </div>
 
-            {/* IOC count */}
-            <div className="text-xs text-[#64748b]">
+            <div className="mono" style={{ fontSize: 9, color: "var(--muted)" }}>
               {inc.iocs?.length || 0} IOCs correlated into this incident
             </div>
           </motion.div>
@@ -119,9 +155,9 @@ export default function Alerts({ incidents }) {
   const [filter, setFilter] = useState("all");
   const filtered = [...incidents]
     .filter(i => filter === "all" || i.severity === filter)
-    .sort((a, b) => (SEV_ORDER[a.severity] ?? 3) - (SEV_ORDER[b.severity] ?? 3));
+    .sort((a, b) => (ORDER[a.severity] ?? 3) - (ORDER[b.severity] ?? 3));
 
-  const counts = FILTERS.slice(1).reduce((acc, s) =>
+  const counts = TABS.slice(1).reduce((acc, s) =>
     ({ ...acc, [s]: incidents.filter(i => i.severity === s).length }), {});
 
   return (
@@ -129,28 +165,27 @@ export default function Alerts({ incidents }) {
       {/* Filter bar */}
       <Card delay={0}>
         <div className="flex items-center gap-3 flex-wrap">
-          <Filter size={14} className="text-[#64748b]" />
-          <span className="text-xs text-[#64748b] uppercase tracking-wider">Filter:</span>
-          {FILTERS.map(f => {
-            const c = SEV_COLOR[f] || "#00d4ff";
-            const active = filter === f;
+          <Filter size={11} style={{ color: "var(--muted)" }} />
+          <span className="section-label">FILTER</span>
+          {TABS.map(f => {
+            const c = SEV[f] || "var(--cyan)";
             return (
-              <motion.button key={f} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
+              <button
+                key={f}
                 onClick={() => setFilter(f)}
-                className="text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all"
-                style={{
-                  borderColor: active ? c : "#1e3a5f",
-                  background: active ? c + "20" : "transparent",
-                  color: active ? c : "#64748b",
-                }}>
+                className={`btn-neon ${filter === f ? "active" : ""}`}
+                style={filter === f && f !== "all" ? { color: c, borderColor: c, background: `${c}12`, boxShadow: `0 0 12px ${c}25` } : {}}
+              >
                 {f.toUpperCase()}
                 {f !== "all" && counts[f] > 0 && (
-                  <span className="ml-1.5 text-xs opacity-70">({counts[f]})</span>
+                  <span className="ml-1.5" style={{ opacity: 0.7 }}>({counts[f]})</span>
                 )}
-              </motion.button>
+              </button>
             );
           })}
-          <span className="ml-auto text-xs text-[#64748b]">{filtered.length} incident{filtered.length !== 1 ? "s" : ""}</span>
+          <span className="ml-auto mono" style={{ fontSize: 10, color: "var(--muted)" }}>
+            {filtered.length} INCIDENT{filtered.length !== 1 ? "S" : ""}
+          </span>
         </div>
       </Card>
 
@@ -158,10 +193,15 @@ export default function Alerts({ incidents }) {
       <div>
         <AnimatePresence mode="popLayout">
           {filtered.length === 0
-            ? <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="text-center text-[#64748b] text-sm py-16">
-                No {filter !== "all" ? filter : ""} incidents — system clean.
-              </motion.p>
+            ? (
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-24 gap-4">
+                <Zap size={36} style={{ color: "var(--dim)" }} />
+                <p className="mono" style={{ color: "var(--muted)", fontSize: 12, letterSpacing: "0.1em" }}>
+                  NO {filter !== "all" ? filter.toUpperCase() : ""} INCIDENTS — SYSTEM CLEAN
+                </p>
+              </motion.div>
+            )
             : filtered.map((inc, i) => <AlertRow key={inc.id} inc={inc} index={i} />)
           }
         </AnimatePresence>
