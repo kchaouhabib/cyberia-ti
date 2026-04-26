@@ -41,6 +41,12 @@ class EnrichedIOC(IOC):
     geolocation: Optional[str] = None
     reputation: Optional[float] = None
     apt_attribution: Optional[str] = None  # 'fin7' | 'lazarus' | 'carbanak' | 'silence' | 'cobalt-group' | None
+    # Banking-edition propagation: PC2's enricher copies these from the parent
+    # RawThreatRecord so PC3 doesn't have to re-infer sector or asset_type from
+    # scratch. Both default to None for backward compatibility — existing IOC
+    # rows without these fields deserialize fine.
+    sector: Optional[str] = None  # 'banking' | 'telecom' | 'healthcare' | None
+    asset_type: Optional[str] = None  # 'treasury' | 'payment_gateway' | 'customer_db' | 'swift_terminal' | None
 
 
 class Incident(BaseModel):
