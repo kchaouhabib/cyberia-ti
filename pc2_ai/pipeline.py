@@ -27,6 +27,7 @@ from pc2_ai.classifier import classify
 from pc2_ai.confidence_scorer import apply as score_confidence
 from pc2_ai.ner import get_apt_attribution
 from pc2_ai.enrichment_caller import enrich
+from pc2_ai.summary_worker import patch_generic_summaries
 from shared.schemas import EnrichedIOC, RawThreatRecord
 
 logging.basicConfig(
@@ -158,6 +159,11 @@ def run_once() -> None:
         f"Pass done — {len(new_records)} record(s), "
         f"{total_pushed} enriched IOC(s) pushed to PC1 /iocs/enriched"
     )
+
+    # Patch any incidents PC3 has already correlated but still carry generic summaries
+    n_patched = patch_generic_summaries(PC1_BASE)
+    if n_patched:
+        log.info(f"LLM summary worker patched {n_patched} incident(s)")
 
 
 def run_loop() -> None:
