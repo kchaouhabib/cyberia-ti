@@ -18,9 +18,9 @@ const PAGE_TITLES = {
 };
 
 const pageVariants = {
-  initial: { opacity: 0, x: 16, filter: "blur(4px)" },
-  animate: { opacity: 1, x: 0,  filter: "blur(0px)", transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
-  exit:    { opacity: 0, x: -12, filter: "blur(2px)", transition: { duration: 0.18, ease: "easeIn" } },
+  initial: { opacity: 0, x: 14, filter: "blur(3px)" },
+  animate: { opacity: 1, x: 0,  filter: "blur(0px)", transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] } },
+  exit:    { opacity: 0, x: -10, filter: "blur(2px)", transition: { duration: 0.16, ease: "easeIn" } },
 };
 
 export default function App() {
@@ -62,60 +62,81 @@ export default function App() {
 
         {/* Top bar */}
         <motion.header
-          initial={{ y: -40, opacity: 0 }}
+          initial={{ y: -36, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.1 }}
-          className="flex items-center gap-4 px-6 py-3 sticky top-0 z-10"
+          transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.08 }}
+          className="flex items-center gap-3 px-5 py-2 sticky top-0 z-10"
           style={{
-            background: "rgba(4, 9, 26, 0.88)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(0,212,255,0.07)",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
-          }}>
-          <div>
-            <h1 className="text-sm font-bold tracking-wide" style={{ color: "var(--clr-text)" }}>
+            background: "rgba(13,17,23,0.94)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderBottom: "1px solid var(--border)",
+            minHeight: 40,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="live-dot" />
+            <span className="text-xs font-semibold tracking-wide" style={{ color: "var(--text)" }}>
               {PAGE_TITLES[page]}
-            </h1>
-            <p className="text-[10px] tracking-wider mt-0.5" style={{ color: "var(--clr-muted)" }}>
-              Banque Atlas · Banking Sector TI · Cyberia 2026
-            </p>
+            </span>
           </div>
+          <span style={{ color: "var(--dim)", fontSize: 11 }}>·</span>
+          <span className="text-[10px] tracking-wider" style={{ color: "var(--muted)" }}>
+            Banque Atlas · Banking TI · Cyberia 2026
+          </span>
 
           <div className="flex items-center gap-2 ml-auto">
             {criticalCount > 0 && (
               <motion.div
                 animate={{ scale: [1, 1.04, 1] }}
                 transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-bold"
-                style={{ fontSize: 11, background: "rgba(255,45,85,0.14)", color: "var(--clr-red)", border: "1px solid rgba(255,45,85,0.32)" }}>
-                <Zap size={10} />
+                className="flex items-center gap-1 rounded-full px-2.5 py-0.5 font-bold"
+                style={{
+                  fontSize: 10,
+                  background: "var(--critical-bg)",
+                  color: "var(--critical)",
+                  border: "1px solid rgba(255,107,107,0.28)",
+                }}
+              >
+                <Zap size={9} />
                 {criticalCount} CRITICAL
               </motion.div>
             )}
             {compBreaches > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full px-3 py-1"
-                style={{ fontSize: 11, background: "rgba(255,159,10,0.11)", color: "var(--clr-orange)", border: "1px solid rgba(255,159,10,0.28)" }}>
-                <Shield size={10} />
+              <div
+                className="flex items-center gap-1 rounded-full px-2.5 py-0.5"
+                style={{
+                  fontSize: 10,
+                  background: "var(--high-bg)",
+                  color: "var(--high)",
+                  border: "1px solid rgba(255,169,77,0.25)",
+                }}
+              >
+                <Shield size={9} />
                 {compBreaches} breach{compBreaches !== 1 ? "es" : ""}
               </div>
             )}
-            <div className="flex items-center gap-1.5 rounded-full px-3 py-1"
-              style={{ fontSize: 11, ...(pc1Ok
-                ? { background: "rgba(48,209,88,0.09)", color: "var(--clr-green)", border: "1px solid rgba(48,209,88,0.22)" }
-                : { background: "rgba(255,45,85,0.09)", color: "var(--clr-red)",   border: "1px solid rgba(255,45,85,0.22)" }) }}>
-              {pc1Ok ? <Wifi size={10} /> : <WifiOff size={10} />}
+            <div
+              className="flex items-center gap-1 rounded-full px-2.5 py-0.5"
+              style={{
+                fontSize: 10,
+                ...(pc1Ok
+                  ? { background: "var(--low-bg)", color: "var(--low)", border: "1px solid rgba(105,219,124,0.22)" }
+                  : { background: "var(--critical-bg)", color: "var(--critical)", border: "1px solid rgba(255,107,107,0.22)" }),
+              }}
+            >
+              {pc1Ok ? <Wifi size={9} /> : <WifiOff size={9} />}
               {pc1Ok ? "Live" : "Offline"}
             </div>
-            <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--clr-muted)" }}>
-              <Clock size={10} />
+            <div className="flex items-center gap-1 mono" style={{ fontSize: 10, color: "var(--muted)" }}>
+              <Clock size={9} />
               {lastRefresh}
             </div>
           </div>
         </motion.header>
 
         {/* Page content */}
-        <main className="flex-1 p-5 overflow-y-auto">
+        <main className="flex-1 p-4 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit">
               {page === "overview"    && <Overview    {...pageProps} />}
@@ -128,13 +149,17 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <div className="px-6 py-2 flex items-center gap-3"
-          style={{ borderTop: "1px solid rgba(0,212,255,0.06)", fontSize: 10, color: "rgba(100,116,139,0.45)" }}>
+        <div
+          className="px-5 py-1 flex items-center gap-3 mono"
+          style={{ borderTop: "1px solid var(--border)", fontSize: 10, color: "var(--dim)" }}
+        >
           <span className="tabular-nums">Auto-refresh 5s</span>
           <span>·</span>
           <span className="tabular-nums">Tick #{tick}</span>
           <span>·</span>
-          <span className="tabular-nums">{incidents.length} incidents · {incidents.reduce((n,i)=>n+(i.iocs?.length||0),0)} IOCs</span>
+          <span className="tabular-nums">
+            {incidents.length} incidents · {incidents.reduce((n, i) => n + (i.iocs?.length || 0), 0)} IOCs
+          </span>
         </div>
       </div>
     </div>

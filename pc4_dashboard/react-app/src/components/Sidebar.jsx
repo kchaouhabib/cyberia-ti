@@ -12,114 +12,91 @@ const pages = [
 export default function Sidebar({ active, setActive, pc1Ok, incidentCount }) {
   return (
     <motion.aside
-      initial={{ x: -60, opacity: 0 }}
+      initial={{ x: -52, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 28 }}
+      className="flex flex-col shrink-0 items-center relative"
       style={{
-        background: "rgba(4, 9, 26, 0.92)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderRight: "1px solid rgba(0,212,255,0.08)",
+        width: 52,
+        minHeight: "100dvh",
+        background: "var(--bg-panel)",
+        borderRight: "1px solid var(--border)",
       }}
-      className="w-56 min-h-screen flex flex-col shrink-0 relative"
     >
-      {/* Top accent line */}
+      {/* Top accent */}
       <div className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent)" }} />
+        style={{ background: "linear-gradient(90deg, transparent, rgba(116,192,252,0.3), transparent)" }} />
 
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5" style={{ borderBottom: "1px solid rgba(0,212,255,0.06)" }}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded-md flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.3), rgba(0,212,255,0.08))", border: "1px solid rgba(0,212,255,0.3)" }}>
-            <Radio size={12} style={{ color: "var(--clr-cyan)" }} />
-          </div>
-          <span className="text-base font-bold tracking-widest neon-cyan">CYBERIA</span>
+      <div className="py-4 flex flex-col items-center gap-2.5 w-full"
+        style={{ borderBottom: "1px solid var(--border)" }}>
+        <div className="w-7 h-7 rounded flex items-center justify-center"
+          title="CYBERIA TI"
+          style={{
+            background: "rgba(116,192,252,0.10)",
+            border: "1px solid rgba(116,192,252,0.22)",
+          }}>
+          <Radio size={12} style={{ color: "var(--info)" }} />
         </div>
-        <div className="text-[10px] tracking-[0.18em] uppercase ml-8"
-          style={{ color: "var(--clr-muted)" }}>
-          Threat Intelligence
-        </div>
-
-        {/* Status bar */}
-        <div className="flex items-center gap-2 mt-4 px-2 py-1.5 rounded-lg"
-          style={{ background: "rgba(0,212,255,0.04)", border: "1px solid rgba(0,212,255,0.07)" }}>
-          <div className="relative w-2 h-2 shrink-0">
-            <span className={`absolute inset-0 rounded-full ${pc1Ok ? "bg-green-400" : "bg-red-500 blink"}`} />
-            {pc1Ok && <span className="absolute inset-0 rounded-full bg-green-400 pulse-dot" />}
-          </div>
-          <span className="text-[10px] font-medium" style={{ color: pc1Ok ? "var(--clr-green)" : "var(--clr-red)" }}>
-            {pc1Ok ? "PC1 Connected" : "PC1 Offline"}
-          </span>
-          {incidentCount > 0 && (
-            <span className="ml-auto text-[10px] font-bold rounded-full px-1.5 py-0.5 tabular-nums"
-              style={{ background: "rgba(255,45,85,0.2)", color: "var(--clr-red)", border: "1px solid rgba(255,45,85,0.35)" }}>
-              {incidentCount}
-            </span>
-          )}
+        {/* PC1 status dot */}
+        <div
+          title={pc1Ok ? "PC1 Connected" : "PC1 Offline"}
+          className="relative w-2 h-2"
+        >
+          <span
+            className={`absolute inset-0 rounded-full ${pc1Ok ? "" : "blink"}`}
+            style={{ background: pc1Ok ? "var(--low)" : "var(--critical)" }}
+          />
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        <div className="text-[9px] font-semibold tracking-[0.2em] uppercase px-3 mb-3"
-          style={{ color: "rgba(100,116,139,0.5)" }}>
-          Navigation
-        </div>
+      <nav className="flex-1 flex flex-col items-center gap-1 py-3 w-full px-2">
         {pages.map(({ id, label, icon: Icon }, i) => {
           const isActive = active === id;
           return (
             <motion.button
               key={id}
               onClick={() => setActive(id)}
-              initial={{ opacity: 0, x: -12 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.05 + i * 0.04, type: "spring", stiffness: 300, damping: 25 }}
-              whileHover={{ x: isActive ? 0 : 3, transition: { duration: 0.15 } }}
-              whileTap={{ scale: 0.97 }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors relative"
+              transition={{ delay: 0.06 + i * 0.04, type: "spring", stiffness: 300, damping: 25 }}
+              whileTap={{ scale: 0.90 }}
+              title={label}
+              className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
               style={isActive ? {
-                background: "linear-gradient(135deg, rgba(0,212,255,0.14), rgba(0,212,255,0.04))",
-                color: "var(--clr-cyan)",
-                border: "1px solid rgba(0,212,255,0.22)",
-                boxShadow: "0 2px 12px rgba(0,212,255,0.08)",
+                background: "rgba(116,192,252,0.12)",
+                color: "var(--info)",
+                border: "1px solid rgba(116,192,252,0.22)",
               } : {
-                color: "var(--clr-muted)",
+                color: "var(--dim)",
                 border: "1px solid transparent",
               }}
             >
-              {/* Active left accent */}
               {isActive && (
-                <motion.div layoutId="nav-accent"
-                  className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
-                  style={{ background: "var(--clr-cyan)", boxShadow: "0 0 6px var(--clr-cyan)" }} />
+                <motion.div
+                  layoutId="nav-accent"
+                  className="absolute -left-2 top-1.5 bottom-1.5 w-0.5 rounded-full"
+                  style={{ background: "var(--info)" }}
+                />
               )}
-              <Icon size={15} />
-              <span>{label}</span>
-              {isActive && (
-                <motion.div layoutId="active-dot"
-                  className="ml-auto w-1 h-1 rounded-full"
-                  style={{ background: "var(--clr-cyan)", boxShadow: "0 0 4px var(--clr-cyan)" }} />
+              <Icon size={14} />
+              {id === "alerts" && incidentCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold"
+                  style={{ fontSize: 8, background: "var(--critical)", color: "#fff" }}
+                >
+                  {incidentCount > 9 ? "9+" : incidentCount}
+                </span>
               )}
             </motion.button>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(0,212,255,0.06)" }}>
-        <div className="text-[10px] font-semibold" style={{ color: "var(--clr-muted)" }}>
-          Banque Atlas — Demo
-        </div>
-        <div className="text-[9px] tracking-widest mt-0.5 uppercase"
-          style={{ color: "rgba(100,116,139,0.35)" }}>
-          Cyberia 2026
-        </div>
-      </div>
-
-      {/* Bottom accent line */}
+      {/* Bottom accent */}
       <div className="absolute bottom-0 left-0 right-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent)" }} />
+        style={{ background: "linear-gradient(90deg, transparent, rgba(116,192,252,0.15), transparent)" }} />
     </motion.aside>
   );
 }
