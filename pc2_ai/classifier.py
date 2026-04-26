@@ -70,6 +70,17 @@ _TRAINING_DATA = [
     ("swift-terminal-update.net",       "domain", "urlhaus",      "phishing"),
     ("https://trickbot-banker.com/",    "url",    "threatfox",    "phishing"),
     ("atlas-treasury-secure.com",       "domain", "scenario",     "phishing"),
+    # Generic phishing — no banking keywords, tests real generalization
+    ("document-shared-preview.com",     "domain", "urlhaus",      "phishing"),
+    ("invoice-pending-review.net",      "domain", "urlhaus",      "phishing"),
+    ("account-suspended-verify.xyz",    "domain", "urlhaus",      "phishing"),
+    ("staff-it-helpdesk-reset.com",     "domain", "otx",          "phishing"),
+    ("hr-onboarding-portal.tk",         "domain", "otx",          "phishing"),
+    ("https://docs-share-link.ru/view", "url",    "urlhaus",      "phishing"),
+    ("https://mail-reset-confirm.xyz/", "url",    "urlhaus",      "phishing"),
+    ("https://file-access-denied.ml/",  "url",    "scenario",     "phishing"),
+    ("https://support-ticket-open.ga/", "url",    "urlhaus",      "phishing"),
+    ("notification-alert-secure.net",   "domain", "threatfox",    "phishing"),
 
     # ── MALWARE ───────────────────────────────────────────────────────────
     ("a3f1e2b4c5d6e7f8a3f1e2b4c5d6e7f8a3f1e2b4c5d6e7f8a3f1e2b4c5d6e7f8", "hash_sha256", "malwarebazaar", "malware"),
@@ -215,6 +226,23 @@ class IOCFeatureExtractor(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
+    @staticmethod
+    def _is_private_ip(value: str) -> bool:
+        """True if value looks like a private/internal IP — strong lateral movement signal."""
+        import re
+        if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", value):
+            return False
+        parts = value.split(".")
+        try:
+            a, b = int(parts[0]), int(parts[1])
+        except ValueError:
+            return False
+        return (
+            a == 10
+            or (a == 172 and 16 <= b <= 31)
+            or (a == 192 and b == 168)
+        )
+
     def transform(self, X):
         rows = []
         for value, ioc_type, source in X:
@@ -223,7 +251,7 @@ class IOCFeatureExtractor(BaseEstimator, TransformerMixin):
             row += [1 if ioc_type == t else 0 for t in _IOC_TYPES]
             # One-hot: source
             row += [1 if source == s else 0 for s in _SOURCES]
-            # Value features
+            # Value keyword features
             v = value.lower()
             row.append(1 if any(k in v for k in ["bank", "banque", "swift", "bct", "treasury", "payment", "atlas"]) else 0)
             row.append(1 if any(k in v for k in ["login", "secure", "verify", "auth", "portal", "update"]) else 0)
@@ -235,6 +263,8 @@ class IOCFeatureExtractor(BaseEstimator, TransformerMixin):
             row.append(1 if ioc_type in ("hash_md5", "hash_sha256") else 0)
             row.append(1 if ioc_type == "cve" else 0)
             row.append(1 if ioc_type == "url" else 0)
+            # Private IP feature — direct signal for lateral movement
+            row.append(1 if self._is_private_ip(value) else 0)
             rows.append(row)
         return np.array(rows, dtype=float)
 
@@ -317,4 +347,4 @@ if __name__ == "__main__":
     ]
     print("\nSmoke test:")
     for v, t, s in tests:
-        print(f"  {t:12} {v:45} → {classify(v, t, s)}")
+        print(f"  {t:12} {v:45} -> {classify(v, t, s)}")
