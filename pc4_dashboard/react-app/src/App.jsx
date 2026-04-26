@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Wifi, WifiOff } from "lucide-react";
+import { Clock, Wifi, WifiOff, Zap, Shield } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Overview    from "./pages/Overview";
 import Alerts      from "./pages/Alerts";
@@ -18,9 +18,9 @@ const PAGE_TITLES = {
 };
 
 const pageVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } },
-  exit:    { opacity: 0, x: -20, transition: { duration: 0.2 } },
+  initial: { opacity: 0, x: 16, filter: "blur(4px)" },
+  animate: { opacity: 1, x: 0,  filter: "blur(0px)", transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
+  exit:    { opacity: 0, x: -12, filter: "blur(2px)", transition: { duration: 0.18, ease: "easeIn" } },
 };
 
 export default function App() {
@@ -52,45 +52,63 @@ export default function App() {
 
   const criticalCount = incidents.filter(i => i.severity === "critical").length;
   const compBreaches  = incidents.reduce((n, i) => n + (i.compliance_breaches?.length || 0), 0);
-
-  const pageProps = { incidents, predictions, stats };
+  const pageProps     = { incidents, predictions, stats };
 
   return (
-    <div className="flex min-h-screen grid-bg">
+    <div className="flex min-h-dvh grid-bg">
       <Sidebar active={page} setActive={setPage} pc1Ok={pc1Ok} incidentCount={incidents.length} />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Top bar */}
-        <motion.header initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          className="flex items-center gap-4 px-6 py-3 border-b border-[#1e3a5f] bg-[#070f1f]/80 backdrop-blur-sm sticky top-0 z-10">
+        <motion.header
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.1 }}
+          className="flex items-center gap-4 px-6 py-3 sticky top-0 z-10"
+          style={{
+            background: "rgba(4, 9, 26, 0.88)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(0,212,255,0.07)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
+          }}>
           <div>
-            <h1 className="text-base font-bold text-[#e8f4f8]">{PAGE_TITLES[page]}</h1>
-            <p className="text-xs text-[#64748b]">🏦 Banque Atlas · Banking Sector TI · Cyberia 2026</p>
+            <h1 className="text-sm font-bold tracking-wide" style={{ color: "var(--clr-text)" }}>
+              {PAGE_TITLES[page]}
+            </h1>
+            <p className="text-[10px] tracking-wider mt-0.5" style={{ color: "var(--clr-muted)" }}>
+              Banque Atlas · Banking Sector TI · Cyberia 2026
+            </p>
           </div>
 
-          {/* Status pills */}
           <div className="flex items-center gap-2 ml-auto">
             {criticalCount > 0 && (
-              <motion.span animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                className="text-xs bg-red-500/20 text-red-400 border border-red-500/40 rounded-full px-3 py-1 font-bold">
-                🚨 {criticalCount} CRITICAL
-              </motion.span>
+              <motion.div
+                animate={{ scale: [1, 1.04, 1] }}
+                transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 font-bold"
+                style={{ fontSize: 11, background: "rgba(255,45,85,0.14)", color: "var(--clr-red)", border: "1px solid rgba(255,45,85,0.32)" }}>
+                <Zap size={10} />
+                {criticalCount} CRITICAL
+              </motion.div>
             )}
             {compBreaches > 0 && (
-              <span className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/40 rounded-full px-3 py-1">
-                ⚠ {compBreaches} breach{compBreaches !== 1 ? "es" : ""}
-              </span>
+              <div className="flex items-center gap-1.5 rounded-full px-3 py-1"
+                style={{ fontSize: 11, background: "rgba(255,159,10,0.11)", color: "var(--clr-orange)", border: "1px solid rgba(255,159,10,0.28)" }}>
+                <Shield size={10} />
+                {compBreaches} breach{compBreaches !== 1 ? "es" : ""}
+              </div>
             )}
-            <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${
-              pc1Ok ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-red-500/10 text-red-400 border-red-500/30"
-            }`}>
-              {pc1Ok ? <Wifi size={11} /> : <WifiOff size={11} />}
-              {pc1Ok ? "PC1 Live" : "PC1 Down"}
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-1"
+              style={{ fontSize: 11, ...(pc1Ok
+                ? { background: "rgba(48,209,88,0.09)", color: "var(--clr-green)", border: "1px solid rgba(48,209,88,0.22)" }
+                : { background: "rgba(255,45,85,0.09)", color: "var(--clr-red)",   border: "1px solid rgba(255,45,85,0.22)" }) }}>
+              {pc1Ok ? <Wifi size={10} /> : <WifiOff size={10} />}
+              {pc1Ok ? "Live" : "Offline"}
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-[#64748b]">
-              <Clock size={11} />
+            <div className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--clr-muted)" }}>
+              <Clock size={10} />
               {lastRefresh}
             </div>
           </div>
@@ -110,12 +128,13 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <div className="px-6 py-2 border-t border-[#1e3a5f] flex items-center gap-3 text-xs text-[#1e3a5f]">
-          <span>Auto-refresh every 5s</span>
+        <div className="px-6 py-2 flex items-center gap-3"
+          style={{ borderTop: "1px solid rgba(0,212,255,0.06)", fontSize: 10, color: "rgba(100,116,139,0.45)" }}>
+          <span className="tabular-nums">Auto-refresh 5s</span>
           <span>·</span>
-          <span>Tick #{tick}</span>
+          <span className="tabular-nums">Tick #{tick}</span>
           <span>·</span>
-          <span>{incidents.length} incidents · {incidents.reduce((n,i)=>n+(i.iocs?.length||0),0)} IOCs</span>
+          <span className="tabular-nums">{incidents.length} incidents · {incidents.reduce((n,i)=>n+(i.iocs?.length||0),0)} IOCs</span>
         </div>
       </div>
     </div>
