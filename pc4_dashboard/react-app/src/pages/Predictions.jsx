@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Card, { CardTitle } from "../components/Card";
 
@@ -18,7 +18,9 @@ function PredictionCard({ p, delay }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="text-xs text-[#64748b] uppercase tracking-wider mb-1">{p.sector}</div>
-          <div className="text-sm font-bold text-[#e8f4f8] capitalize">{p.threat_type?.replace("_", " ")}</div>
+          <div className="text-sm font-bold text-[#e8f4f8] capitalize">
+            {p.threat_type?.replace("apt:", "APT: ").replace(/_/g, " ").replace(/-/g, " ")}
+          </div>
         </div>
         <div className="p-2 rounded-lg" style={{ background: c + "20", border: `1px solid ${c}40` }}>
           <Icon size={16} style={{ color: c }} />
