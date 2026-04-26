@@ -38,7 +38,7 @@ export default function App() {
     setIncidents(Array.isArray(inc) ? inc : []);
     setPredictions(Array.isArray(pred) ? pred : []);
     setStats(st && typeof st === "object" ? st : {});
-    setPc1Ok(Array.isArray(inc) && inc.length > 0);
+    setPc1Ok(Array.isArray(inc));
     setTime(new Date().toLocaleTimeString());
     setTick(t => t + 1);
   }
