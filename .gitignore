@@ -49,6 +49,9 @@ htmlcov/
 *.swp
 *.swo
 
+# Claude Code personal overrides (must never be committed)
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
