@@ -85,6 +85,9 @@ def process_record(record: RawThreatRecord) -> int:
     if not raw_iocs:
         return 0
 
+    # Collect CVEs found in this record — used to populate related_cves on every IOC
+    record_cves = sorted({i.value.upper() for i in raw_iocs if i.type == "cve"})
+
     # Step 2 — deduplicate merged results
     deduped, n_removed = deduplicate(raw_iocs)
     if n_removed:
@@ -112,7 +115,7 @@ def process_record(record: RawThreatRecord) -> int:
             source=scored_ioc.source,
             first_seen=scored_ioc.first_seen,
             threat_type=threat_type,
-            related_cves=[],
+            related_cves=record_cves,
             geolocation=geolocation,
             reputation=reputation,
             apt_attribution=apt_attr,
