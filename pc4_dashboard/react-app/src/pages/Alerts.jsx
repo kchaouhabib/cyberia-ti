@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Filter, Zap, Download, FileJson, FileText, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, Zap, Download, FileJson, FileText, FileDown, Clock } from "lucide-react";
 import Card from "../components/Card";
 import { fetchTimeline, downloadExport } from "../api";
 
@@ -275,6 +275,10 @@ export default function Alerts({ incidents }) {
             <button onClick={() => downloadExport("csv")} className="btn-neon flex items-center gap-1.5"
               style={{ color: "var(--green)", borderColor: "rgba(0,255,136,0.25)" }}>
               <FileText size={9} /> CSV
+            </button>
+            <button onClick={() => downloadExport("pdf")} className="btn-neon flex items-center gap-1.5"
+              style={{ color: "var(--critical)", borderColor: "var(--critical-b)", background: "var(--critical-bg)" }}>
+              <FileDown size={9} /> PDF
             </button>
           </div>
         </div>
