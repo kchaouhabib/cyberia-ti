@@ -31,6 +31,7 @@ data/raw/*
 data/enriched/*
 data/scenario/*.db
 data/mitre/enterprise-attack.json
+data/demo_artifacts/
 !data/raw/.gitkeep
 !data/enriched/.gitkeep
 !data/scenario/.gitkeep
