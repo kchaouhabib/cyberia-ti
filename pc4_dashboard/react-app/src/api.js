@@ -12,10 +12,10 @@ async function get(path, fallback) {
 
 export const fetchIncidents   = () => get("/incidents",   []);
 export const fetchPredictions = () => get("/predictions", []);
+export const fetchTimeline    = (id) => get(`/incidents/${id}/timeline`, null);
 
 export const fetchStats = async () => {
   const raw = await get("/stats", {});
-  // Normalize PC1 field names to what the UI expects
   return {
     raw_records:         raw.raw_count            ?? raw.raw_records         ?? "—",
     iocs:                raw.ioc_count            ?? raw.iocs                ?? "—",
@@ -24,3 +24,10 @@ export const fetchStats = async () => {
     compliance_breaches: raw.compliance_breach_count ?? raw.compliance_breaches ?? "—",
   };
 };
+
+export function downloadExport(type, id) {
+  const url = id ? `${BASE}/export/${type}?id=${id}` : `${BASE}/export/${type}`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.click();
+}
