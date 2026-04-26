@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Load .env into os.environ at import time so uvicorn-spawned routes (e.g.
@@ -42,6 +43,17 @@ app = FastAPI(
     title="CYBERIA Threat Intelligence API",
     version="0.2.0",
     description="PC1 backbone — single source of truth for raw records, IOCs, incidents, predictions.",
+)
+
+# Permissive CORS so PC4's React dashboard can call PC1 directly from any
+# origin (Vite dev server on :5173, prod build on PC4's machine, etc.) without
+# needing a proxy. Safe for the hackathon — the API is behind a NetBird mesh
+# and exposes no sensitive auth surface. Tighten before any public deploy.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
