@@ -140,27 +140,25 @@ def run_once() -> None:
 
     if not new_records:
         log.info("No new records — waiting for PC1 data.")
-        return
+    else:
+        total_pushed = 0
 
-    total_pushed = 0
-    total_deduped = 0
+        for record in new_records:
+            try:
+                n = process_record(record)
+                sector_tag = f"[{record.sector}]" if record.sector else ""
+                log.info(f"[{record.source}]{sector_tag} {record.id[:8]}…  →  {n} enriched IOC(s) pushed")
+                total_pushed += n
+                _processed_ids.add(record.id)
+            except Exception as e:
+                log.error(f"Failed to process record {record.id}: {e}")
 
-    for record in new_records:
-        try:
-            n = process_record(record)
-            sector_tag = f"[{record.sector}]" if record.sector else ""
-            log.info(f"[{record.source}]{sector_tag} {record.id[:8]}…  →  {n} enriched IOC(s) pushed")
-            total_pushed += n
-            _processed_ids.add(record.id)
-        except Exception as e:
-            log.error(f"Failed to process record {record.id}: {e}")
+        log.info(
+            f"Pass done — {len(new_records)} record(s), "
+            f"{total_pushed} enriched IOC(s) pushed to PC1 /iocs/enriched"
+        )
 
-    log.info(
-        f"Pass done — {len(new_records)} record(s), "
-        f"{total_pushed} enriched IOC(s) pushed to PC1 /iocs/enriched"
-    )
-
-    # Patch any incidents PC3 has already correlated but still carry generic summaries
+    # Patch generic summaries every cycle — runs even when there are no new raw records
     n_patched = patch_generic_summaries(PC1_BASE)
     if n_patched:
         log.info(f"LLM summary worker patched {n_patched} incident(s)")
