@@ -34,6 +34,14 @@ from datetime import datetime, timezone
 
 import httpx
 
+# Windows consoles default to cp1252 which can't encode the em-dashes and
+# section symbols used below. Force UTF-8 so the script runs identically on
+# Linux/macOS/Windows. Safe fallback if the stream doesn't support reconfigure.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 
 def parse_ts(ts: str) -> datetime:
     """Parse ISO-8601, force UTC if the timestamp is timezone-naive."""
@@ -60,7 +68,6 @@ def main() -> int:
 
     with httpx.Client() as client:
         stats = fetch(client, f"{base}/stats")
-        raw = fetch(client, f"{base}/raw?limit=2000")
         iocs = fetch(client, f"{base}/iocs/enriched?limit=2000")
         incs = fetch(client, f"{base}/incidents?limit=200")
         preds = fetch(client, f"{base}/predictions")
@@ -76,7 +83,7 @@ def main() -> int:
         window_min = (ts_sorted[-1] - ts_sorted[0]).total_seconds() / 60
         rate = len(iocs) / max(window_min, 1)
         print(f"  enriched IOCs:        {len(iocs)}")
-        print(f"  time window (min):    {window_min:.1f}  ({ts_sorted[0].isoformat()} → {ts_sorted[-1].isoformat()})")
+        print(f"  time window (min):    {window_min:.1f}  ({ts_sorted[0].isoformat()} -> {ts_sorted[-1].isoformat()})")
         print(f"  average rate:         {rate:.2f} IOCs/min")
         print(f"  NOTE: averaged over the full ingest window. During the 4-event")
         print(f"        scenario fire (--pace 60), instantaneous rate jumps ~10-30x.")
