@@ -20,7 +20,7 @@ from pydantic import BaseModel
 # own call because it has no main().
 load_dotenv()
 
-from pc1_data import db
+from pc1_data import db, recommendations
 from pc1_data.enrichment import shodan as shodan_enrich
 from pc1_data.enrichment import virustotal as vt_enrich
 from pc1_data.exporters import csv_export, json_export, pdf_export
@@ -179,6 +179,8 @@ def incident_timeline(incident_id: str) -> Dict[str, object]:
 
     Events are sorted by `first_seen` ascending so the front-end can render a
     top-to-bottom kill-chain (phishing → lateral → exfil → c2 / SWIFT anomaly).
+    Each event carries `mitre_technique` (derived from `threat_type`) so PC4
+    can animate the MITRE ATT&CK heatmap by lighting up cells in time order.
     """
     inc = db.get_incident_by_id(incident_id)
     if inc is None:
@@ -196,6 +198,7 @@ def incident_timeline(incident_id: str) -> Dict[str, object]:
                 "ioc_value": ioc.value,
                 "ioc_type": ioc.type,
                 "threat_type": ioc.threat_type,
+                "mitre_technique": recommendations.threat_type_to_mitre(ioc.threat_type),
                 "apt_attribution": ioc.apt_attribution,
                 "confidence": ioc.confidence,
                 "geolocation": ioc.geolocation,
@@ -203,6 +206,28 @@ def incident_timeline(incident_id: str) -> Dict[str, object]:
             }
             for ioc in events
         ],
+    }
+
+
+@app.get("/incidents/{incident_id}/actions")
+def incident_actions(incident_id: str) -> Dict[str, object]:
+    """Recommended-actions list for one incident.
+
+    The `actions` array is the rule-based output (deterministic, hand-curated
+    from BATTLE_PLAN Appendix E + F — original team work, not LLM-generated).
+    The `narrative` field is a placeholder for an LLM-generated 2-sentence
+    CISO-facing summary; PC2 may populate it later via a separate worker.
+    """
+    inc = db.get_incident_by_id(incident_id)
+    if inc is None:
+        raise HTTPException(status_code=404, detail=f"incident {incident_id!r} not found")
+    actions = recommendations.recommend_actions(inc)
+    return {
+        "incident_id": inc.id,
+        "severity": inc.severity,
+        "risk_score": inc.risk_score,
+        "actions": [a.to_dict() for a in actions],
+        "narrative": None,  # PC2 LLM hook — see PC1_HANDOFF for the contract
     }
 
 

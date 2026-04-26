@@ -39,6 +39,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from pc1_data import recommendations
 from shared.schemas import Incident
 
 
@@ -239,6 +240,27 @@ def _incident_section(incident: Incident, styles: dict, with_appendix: bool) -> 
         flow.append(_table(rows, [5 * cm, 11 * cm]))
     else:
         flow.append(Paragraph("(no compliance frameworks tagged)", styles["body"]))
+
+    # Recommended actions — the SOC differentiator. Rule-based engine derives a
+    # priority-ordered action list from MITRE techniques + compliance frameworks
+    # + targeted assets + APT attribution. Hand-curated text (BATTLE_PLAN
+    # Appendix E + F + team banking-domain knowledge); not LLM-generated.
+    flow.append(Paragraph("Recommended actions", styles["section"]))
+    actions = recommendations.recommend_actions(incident)
+    if actions:
+        rows = [["Pri", "Urgency", "Category", "Action"]]
+        for a in actions:
+            rows.append(
+                [
+                    str(a.priority),
+                    a.urgency,
+                    a.category,
+                    Paragraph(a.text, styles["body"]),
+                ]
+            )
+        flow.append(_table(rows, [1.2 * cm, 1.8 * cm, 2.5 * cm, 10.5 * cm]))
+    else:
+        flow.append(Paragraph("(no actions generated)", styles["body"]))
 
     if with_appendix and incident.iocs:
         flow.append(PageBreak())
