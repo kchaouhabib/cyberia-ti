@@ -1,8 +1,8 @@
-const PC1 = "http://100.67.61.250:8000";
+const BASE = "/api";
 
 async function get(path, fallback) {
   try {
-    const r = await fetch(`${PC1}${path}`, { signal: AbortSignal.timeout(4000) });
+    const r = await fetch(`${BASE}${path}`, { signal: AbortSignal.timeout(5000) });
     if (!r.ok) return fallback;
     return r.json();
   } catch {
@@ -12,5 +12,15 @@ async function get(path, fallback) {
 
 export const fetchIncidents   = () => get("/incidents",   []);
 export const fetchPredictions = () => get("/predictions", []);
-export const fetchStats       = () => get("/stats",       {});
-export const PC1_URL          = PC1;
+
+export const fetchStats = async () => {
+  const raw = await get("/stats", {});
+  // Normalize PC1 field names to what the UI expects
+  return {
+    raw_records:         raw.raw_count            ?? raw.raw_records         ?? "—",
+    iocs:                raw.ioc_count            ?? raw.iocs                ?? "—",
+    incidents:           raw.incident_count       ?? raw.incidents           ?? "—",
+    predictions:         raw.prediction_count     ?? raw.predictions         ?? "—",
+    compliance_breaches: raw.compliance_breach_count ?? raw.compliance_breaches ?? "—",
+  };
+};
