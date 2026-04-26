@@ -22,6 +22,7 @@ import argparse
 import hashlib
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -71,6 +72,40 @@ def _push_incident(client: httpx.Client, incident: Incident) -> None:
         timeout=HTTP_TIMEOUT_S,
     )
     response.raise_for_status()
+
+
+# Matches the generic correlator-built summary ("141 IOC(s) from 'urlhaus'...").
+# Same regex PC2's summary_worker uses, so we agree on what "generic" means and
+# never accidentally treat a CISO paragraph as generic.
+_GENERIC_SUMMARY_RE = re.compile(r"\d+\s+IOC\(s\)\s+from\s+", re.IGNORECASE)
+
+
+def _preserve_existing_summary(client: httpx.Client, incident: Incident) -> Incident:
+    """Return ``incident`` with PC1's existing CISO summary preserved if any.
+
+    Without this, PC3 re-pushes the generic correlator summary every cycle and
+    clobbers the CISO paragraph that PC2's summary_worker writes - making PC4's
+    AI-summary card flicker between generic and patched text on every poll.
+
+    Behaviour:
+      * 404 / new incident: return ``incident`` unchanged (PC2 will patch it
+        on its next worker cycle, just like before).
+      * Existing summary still generic: return unchanged (nothing to preserve).
+      * Existing summary non-generic: copy it onto our locally-built incident.
+      * Network error: swallow and return unchanged - graceful degradation.
+    """
+    try:
+        response = client.get(
+            f"{PC1_BASE_URL}/incidents/{incident.id}",
+            timeout=HTTP_TIMEOUT_S,
+        )
+        if response.status_code == 200:
+            existing = Incident(**response.json())
+            if existing.summary and not _GENERIC_SUMMARY_RE.search(existing.summary):
+                return incident.model_copy(update={"summary": existing.summary})
+    except httpx.HTTPError:
+        pass
+    return incident
 
 
 def _push_prediction(client: httpx.Client, prediction: Prediction) -> None:
@@ -172,6 +207,7 @@ def run_once() -> int:
         enriched_incidents: list[Incident] = []
         for incident in incidents:
             tagged = _enrich_incident(incident)
+            tagged = _preserve_existing_summary(client, tagged)
             enriched_incidents.append(tagged)
             try:
                 _push_incident(client, tagged)
