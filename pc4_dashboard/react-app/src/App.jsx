@@ -53,21 +53,21 @@ export default function App() {
   const compBreaches  = incidents.reduce((n, i) => n + (i.compliance_breaches?.length || 0), 0);
 
   return (
-    <div className="flex flex-col min-h-dvh grid-bg">
+    <div className="flex flex-col min-h-dvh w-full grid-bg">
 
       {/* ── Top nav ── */}
       <motion.nav
         initial={{ y: -56, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 240, damping: 26 }}
-        className="sticky top-0 z-50 flex items-center gap-0 px-6"
+        className="sticky top-0 z-50 w-full flex items-center gap-0 px-6"
         style={{
-          height: 52,
-          background: "rgba(4,5,15,0.95)",
+          height: 56,
+          background: "rgba(4,5,15,0.97)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(0,212,255,0.08)",
-          boxShadow: "0 1px 0 rgba(0,212,255,0.04), 0 4px 24px rgba(0,0,0,0.6)",
+          borderBottom: "1px solid rgba(0,212,255,0.10)",
+          boxShadow: "0 1px 0 rgba(0,212,255,0.05), 0 4px 24px rgba(0,0,0,0.7)",
         }}
       >
         {/* Logo */}
@@ -79,10 +79,10 @@ export default function App() {
               background: "radial-gradient(circle, rgba(0,212,255,0.15) 0%, transparent 70%)",
             }} />
           </div>
-          <span className="font-orb font-bold tracking-widest" style={{ fontSize: 13, color: "var(--cyan)", textShadow: "0 0 16px rgba(0,212,255,0.6)" }}>
+          <span className="font-orb font-bold tracking-widest" style={{ fontSize: 16, color: "var(--cyan)", textShadow: "0 0 16px rgba(0,212,255,0.6)" }}>
             CYBERIA
           </span>
-          <span className="font-orb" style={{ fontSize: 8, color: "var(--muted)", letterSpacing: "0.2em", marginTop: 1 }}>
+          <span className="font-orb" style={{ fontSize: 10, color: "var(--muted)", letterSpacing: "0.2em", marginTop: 1 }}>
             TI · 2026
           </span>
         </div>
@@ -98,10 +98,10 @@ export default function App() {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 + i * 0.04 }}
-                className="relative px-4 py-1.5 rounded font-orb transition-all"
+                className="relative px-4 py-2 rounded font-orb transition-all"
                 style={{
-                  fontSize: 9,
-                  letterSpacing: "0.14em",
+                  fontSize: 11,
+                  letterSpacing: "0.12em",
                   fontWeight: 700,
                   color: isActive ? "var(--cyan)" : "var(--muted)",
                   background: isActive ? "var(--cyan-dim)" : "transparent",
@@ -135,27 +135,27 @@ export default function App() {
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ repeat: Infinity, duration: 1.4 }}
               className="flex items-center gap-1.5 rounded px-2.5 py-1 font-orb"
-              style={{ fontSize: 9, background: "var(--critical-bg)", color: "var(--critical)", border: "1px solid var(--critical-b)", boxShadow: "0 0 12px rgba(255,45,120,0.2)" }}>
-              <Zap size={9} />
+              style={{ fontSize: 11, background: "var(--critical-bg)", color: "var(--critical)", border: "1px solid var(--critical-b)", boxShadow: "0 0 12px rgba(255,32,32,0.2)" }}>
+              <Zap size={11} />
               {criticalCount} CRITICAL
             </motion.div>
           )}
           {compBreaches > 0 && (
             <div className="flex items-center gap-1 rounded px-2.5 py-1 font-orb"
-              style={{ fontSize: 9, background: "var(--high-bg)", color: "var(--high)", border: "1px solid var(--high-b)" }}>
-              <Shield size={9} />
+              style={{ fontSize: 11, background: "var(--high-bg)", color: "var(--high)", border: "1px solid var(--high-b)" }}>
+              <Shield size={11} />
               {compBreaches} BREACH{compBreaches !== 1 ? "ES" : ""}
             </div>
           )}
           <div className="flex items-center gap-1.5 rounded px-2.5 py-1"
-            style={{ fontSize: 9, ...(pc1Ok
+            style={{ fontSize: 11, ...(pc1Ok
               ? { background: "var(--low-bg)", color: "var(--low)", border: "1px solid var(--low-b)" }
               : { background: "var(--critical-bg)", color: "var(--critical)", border: "1px solid var(--critical-b)" }) }}>
             {pc1Ok ? <Wifi size={9} /> : <WifiOff size={9} />}
-            <span className="font-orb" style={{ letterSpacing: "0.1em" }}>{pc1Ok ? "LIVE" : "OFFLINE"}</span>
-            {pc1Ok && <div className="live-dot" style={{ width: 5, height: 5 }} />}
+            <span className="font-orb" style={{ fontSize: 11, letterSpacing: "0.1em" }}>{pc1Ok ? "LIVE" : "OFFLINE"}</span>
+            {pc1Ok && <div className="live-dot" style={{ width: 6, height: 6 }} />}
           </div>
-          <div className="mono" style={{ fontSize: 10, color: "var(--muted)", letterSpacing: "0.05em" }}>
+          <div className="mono" style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.05em" }}>
             {time}
           </div>
         </div>
