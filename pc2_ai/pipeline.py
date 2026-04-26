@@ -119,6 +119,8 @@ def process_record(record: RawThreatRecord) -> int:
             geolocation=geolocation,
             reputation=reputation,
             apt_attribution=apt_attr,
+            sector=record.sector,
+            asset_type=record.asset_type,
         )
 
         try:
