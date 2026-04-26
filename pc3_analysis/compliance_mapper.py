@@ -58,6 +58,26 @@ _ASSET_KEYWORDS: dict[str, re.Pattern[str]] = {
     ),
 }
 
+# Fallback asset inference when no keyword fires. EnrichedIOC doesn't carry
+# asset_type yet, so we map threat_type and apt_attribution to the asset
+# class each is most associated with in banking environments. Coarse on
+# purpose - the alternative is rendering "(none)" on every incident.
+_THREAT_TO_ASSET: dict[str, str] = {
+    "phishing": "customer_db",
+    "exfiltration": "customer_db",
+    "lateral_movement": "payment_gateway",
+    "c2": "payment_gateway",
+    "malware": "payment_gateway",
+}
+_APT_TO_ASSET: dict[str, str] = {
+    "fin7": "payment_gateway",
+    "carbanak": "payment_gateway",
+    "lazarus": "swift_terminal",
+    "cobalt-group": "swift_terminal",
+    "cobalt_group": "swift_terminal",
+    "silence": "swift_terminal",
+}
+
 # Assets considered in PCI-DSS scope (cardholder data environment).
 _PCI_DSS_SCOPE_ASSETS: frozenset[str] = frozenset(
     {"payment_gateway", "customer_db"}
@@ -70,9 +90,16 @@ _INTRUSION_THREAT_TYPES: frozenset[str] = frozenset(
 
 
 def _infer_assets(incident: Incident) -> list[str]:
-    """Best-effort asset-type inference from IOC values + summary text.
+    """Best-effort asset-type inference.
 
-    Returns a sorted, deduplicated list of asset class strings.
+    Layered:
+      1. Keyword scan over IOC values + summary (precise; misses often).
+      2. Fallback by APT attribution (Lazarus -> swift_terminal, FIN7 -> ...).
+      3. Fallback by threat_type (phishing -> customer_db, c2 -> ...).
+
+    The fallbacks guarantee that any incident with at least one classified
+    IOC ends up with at least one asset class, so PC4's "Targeted assets"
+    panel and PC1's PDF report never render "(none)".
     """
     blob_parts: list[str] = []
     for ioc in incident.iocs:
@@ -81,9 +108,22 @@ def _infer_assets(incident: Incident) -> list[str]:
         blob_parts.append(incident.summary)
     blob = " ".join(blob_parts)
 
-    inferred = {
+    inferred: set[str] = {
         asset for asset, pattern in _ASSET_KEYWORDS.items() if pattern.search(blob)
     }
+
+    if not inferred:
+        for ioc in incident.iocs:
+            apt = (ioc.apt_attribution or "").lower()
+            if apt in _APT_TO_ASSET:
+                inferred.add(_APT_TO_ASSET[apt])
+
+    if not inferred:
+        for ioc in incident.iocs:
+            threat = (ioc.threat_type or "").lower()
+            if threat in _THREAT_TO_ASSET:
+                inferred.add(_THREAT_TO_ASSET[threat])
+
     return sorted(inferred)
 
 

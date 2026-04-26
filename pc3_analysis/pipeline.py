@@ -194,8 +194,11 @@ def run_once() -> int:
                 )
 
         # Anomaly detection runs on the same pulled IOC set, independent of
-        # correlation. Logged for now; Phase 3 will surface this on the dashboard.
+        # correlation. Each flagged bucket is logged AND pushed as an
+        # ``anomaly:<source>`` Prediction so PC4 can render volume spikes
+        # alongside the other prediction kinds.
         anomalies = anomaly_detector.from_iocs(iocs, group_by="source")
+        anomaly_predictions: list[Prediction] = []
         for a in anomalies:
             logger.warning(
                 "VOLUME ANOMALY  group=%s  hour=%s  count=%d  score=%.3f",
@@ -203,6 +206,20 @@ def run_once() -> int:
                 a.hour.isoformat(),
                 a.count,
                 a.score,
+            )
+            # IsolationForest decision_function is more negative for stronger
+            # anomalies; flip sign and clip to [0, 100] for a forecast_7d
+            # value PC4 can render as a 0-100 strength indicator.
+            strength = round(min(100.0, max(0.0, -a.score * 100.0)), 2)
+            confidence = round(min(1.0, max(0.0, -a.score)), 3)
+            anomaly_predictions.append(
+                Prediction(
+                    sector="banking",
+                    threat_type=f"anomaly:{a.group_key}",
+                    forecast_7d=strength,
+                    trend="rising",
+                    confidence=confidence,
+                )
             )
 
         # Phase 3: forecast volume, rank CVEs, match APT signatures. All three
@@ -224,6 +241,8 @@ def run_once() -> int:
             predictions.extend(behavior_analyzer.analyze(enriched_incidents))
         except Exception:
             logger.exception("Behavior analyzer failed; skipping APT matches this cycle")
+
+        predictions.extend(anomaly_predictions)
 
         for prediction in predictions:
             try:
